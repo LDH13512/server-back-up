@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>삼단정리 - Clean Puzzle</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        arcade: {
+                            bg: '#080710',
+                            panel: '#151324',
+                            primary: '#ff3b93',    /* 삼단정리 핫핑크 */
+                            secondary: '#00f0ff',  /* 사이버 시안 */
+                            accent: '#39ff14',     /* 네온 그린 */
+                            yellow: '#ffea00',
+                            purple: '#9d4edd'
+                        }
+                    },
+                    boxShadow: {
+                        'neon-pink': '0 0 10px rgba(255, 59, 147, 0.6), 0 0 20px rgba(255, 59, 147, 0.3)',
+                        'neon-blue': '0 0 10px rgba(0, 240, 255, 0.6), 0 0 20px rgba(0, 240, 255, 0.3)',
+                        'neon-green': '0 0 12px rgba(57, 255, 20, 0.5)'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=DungGeunMo&family=Orbitron:wght=700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'DungGeunMo', 'Courier New', Courier, monospace, sans-serif;
+            background-color: #080710;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        canvas {
+            touch-action: none;
+            image-rendering: pixelated;
+        }
+        /* Custom Arcade Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #151324;
+            border-left: 2px solid #231f38;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #ff3b93;
+            border-radius: 4px;
+            border: 2px solid #151324;
+        }
+    </style>
+  <script src="/_runtime/firebase-config?app=minigame"></script>
+  <meta name="author" content="게시판 운영자">
+  <meta name="copyright" content="© 2026 게시판">
+  <meta name="rights" content="AI 도구를 제작 보조로 활용해 운영자가 기획·구현·편집한 자체 콘텐츠">
+</head>
+<body class="text-gray-100 min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- Top Retro Bar -->
+    <header class="border-b-4 border-arcade-primary bg-arcade-panel px-4 py-3 shadow-lg">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded bg-arcade-primary flex items-center justify-center shadow-neon-pink">
+                    <i data-lucide="layers" class="w-6 h-6 text-white animate-bounce"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold tracking-wider text-arcade-primary flex items-center">
+                        삼단정리 <span class="text-xs text-arcade-secondary ml-2 font-mono">APF Tribute</span>
+                    </h1>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <!-- Sound Toggle (기본 음소거 아이콘 세팅) -->
+                <button id="btn-sound" class="text-gray-400 hover:text-white p-2 rounded bg-arcade-bg border-2 border-gray-700 flex items-center justify-center">
+                    <i id="sound-icon" data-lucide="volume-x" class="w-5 h-5 text-red-500"></i>
+                </button>
+                <button id="btn-how-to" class="text-gray-400 hover:text-white p-2 rounded bg-arcade-bg border-2 border-gray-700">
+                    <i data-lucide="help-circle" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-3 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        
+        <!-- Left Section: Game Cabinet Screen (Col 7) -->
+        <div class="lg:col-span-7 flex flex-col justify-between space-y-4">
+            
+            <!-- Dashboard Info -->
+            <div class="grid grid-cols-3 gap-2">
+                <div class="bg-arcade-panel border-2 border-arcade-secondary p-2 rounded shadow-neon-blue text-center">
+                    <div class="text-[11px] text-arcade-secondary uppercase tracking-wider">SCORE</div>
+                    <div id="game-score" class="text-xl md:text-2xl font-bold font-orbitron text-white">0</div>
+                </div>
+                <div class="bg-arcade-panel border-2 border-arcade-primary p-2 rounded shadow-neon-pink text-center">
+                    <div class="text-[11px] text-arcade-primary uppercase tracking-wider">COMBO</div>
+                    <div id="game-combo" class="text-xl md:text-2xl font-bold font-orbitron text-arcade-primary">0</div>
+                </div>
+                <div class="bg-arcade-panel border-2 border-arcade-yellow p-2 rounded text-center relative overflow-hidden" id="fever-card">
+                    <div class="text-[11px] text-arcade-yellow uppercase tracking-wider">FEVER</div>
+                    <div id="game-fever-mult" class="text-xl md:text-2xl font-bold font-orbitron text-arcade-yellow">x1</div>
+                    <div id="fever-progress-bar" class="absolute bottom-0 left-0 h-1 bg-arcade-yellow transition-all duration-100" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Arcade Cabinet Box -->
+            <div class="relative bg-arcade-panel rounded-xl border-4 border-gray-800 p-3 flex flex-col items-center justify-center shadow-2xl aspect-[3/4] w-full max-w-[440px] mx-auto overflow-hidden">
+                
+                <!-- Time/Tension Bar -->
+                <div class="w-full px-1 mb-2">
+                    <div class="flex justify-between text-xs text-gray-400 mb-1">
+                        <span class="flex items-center text-arcade-primary">
+                            <i data-lucide="timer" class="w-3.5 h-3.5 mr-1 text-arcade-primary"></i> 제한 시간
+                            <span id="speed-level" class="text-arcade-yellow ml-2 text-[10px] font-orbitron">(x1.00)</span>
+                        </span>
+                        <span id="time-percentage" class="font-orbitron text-arcade-primary">100%</span>
+                    </div>
+                    <div class="w-full bg-arcade-bg h-4 rounded border-2 border-gray-700 p-[1px]">
+                        <div id="time-gauge" class="h-full bg-gradient-to-r from-arcade-primary to-arcade-yellow rounded transition-all duration-100" style="width: 100%;"></div>
+                    </div>
+                </div>
+
+                <!-- Canvas Wrap -->
+                <div class="relative flex-grow w-full h-full bg-black/60 rounded overflow-hidden border-2 border-gray-900">
+                    <canvas id="game-canvas" class="w-full h-full block"></canvas>
+                    
+                    <!-- Cover Lobby / Game Start -->
+                    <div id="game-start-layer" class="absolute inset-0 bg-arcade-panel/95 flex flex-col items-center justify-center p-6 text-center transition-all duration-300">
+                        <!-- Adorable pixel art decorative head -->
+                        <div class="w-20 h-20 bg-arcade-primary/20 rounded-full border-4 border-arcade-primary flex items-center justify-center mb-4 shadow-neon-pink">
+                            <span class="text-4xl">👩</span>
+                        </div>
+                        <h2 class="text-2xl md:text-3xl font-bold mb-1 text-white">삼단정리</h2>
+                        <span class="text-xs text-arcade-secondary mb-5 tracking-widest font-orbitron">TIDY THREE MATCH CHRONICLES</span>
+                        
+                        <div class="text-xs text-gray-400 max-w-sm mb-6 space-y-1.5 leading-relaxed bg-black/40 p-3 rounded border border-gray-800 text-left">
+                            <p class="text-center font-bold text-arcade-yellow mb-1">💡 플레이 방법 💡</p>
+                            <p>• <strong>각 열의 가장 맨 위에 놓인 블록만</strong> 선택하여 이동할 수 있습니다.</p>
+                            <p>• 블록 선택 후 이동할 열을 누르면 해당 열의 가장 위로 안착합니다.</p>
+                            <p>• <strong>세로로 같은 블록을 3개 이상</strong> 연달아 정렬하여 터뜨리세요!</p>
+                            <p>• 점수가 <span class="text-arcade-yellow font-bold">100,000점 상승할수록</span> 시간이 감소하는 난이도가 점점 가속됩니다!</p>
+                            <p class="text-arcade-secondary font-bold">• <strong>Spacebar</strong>를 누르면 300점을 소모하여 블록 한 줄을 바닥에 즉각 추가하고 제한 시간을 5% 회복합니다!</p>
+                        </div>
+                        
+                        <button id="btn-start-game" class="px-8 py-3.5 bg-gradient-to-r from-arcade-primary to-purple-600 text-white font-bold rounded-lg shadow-neon-pink hover:scale-105 active:scale-95 transition-all text-lg tracking-wider border-b-4 border-pink-900">
+                            게임 시작 (START)
+                        </button>
+                    </div>
+
+                    <!-- Game Over Layer -->
+                    <div id="game-over-layer" class="absolute inset-0 bg-arcade-panel/95 flex flex-col items-center justify-center p-6 text-center transition-all duration-300 hidden">
+                        <div class="text-5xl mb-3">😭</div>
+                        <h2 class="text-3xl font-black text-arcade-primary mb-1">게임 오버</h2>
+                        <span class="text-xs text-gray-500 tracking-wider font-orbitron mb-4" id="game-over-reason">TIME OVER / GRID LOCKED</span>
+                        
+                        <div class="bg-black/40 border-2 border-gray-800 p-4 rounded mb-6 w-full max-w-xs">
+                            <span class="text-xs text-gray-400 block">최종 정리 점수</span>
+                            <span id="final-score" class="text-4xl font-bold font-orbitron text-arcade-yellow shadow-sm">0</span>
+                        </div>
+
+                        <!-- Submit Section -->
+                        <div class="w-full max-w-xs mb-4">
+                            <label class="block text-xs text-gray-400 text-left mb-1 pl-1">명예의 전당 등록 닉네임</label>
+                            <input type="text" id="player-nickname" placeholder="닉네임 입력 (최대 10자)" class="w-full bg-arcade-bg border-2 border-gray-700 focus:border-arcade-primary rounded px-4 py-2.5 text-center text-white font-bold tracking-wide focus:outline-none" maxlength="10">
+                        </div>
+
+                        <div class="flex space-x-3 w-full max-w-xs">
+                            <button id="btn-submit-score" class="flex-grow py-3 bg-gradient-to-r from-arcade-accent to-green-600 text-black font-bold rounded shadow-neon-green hover:scale-105 transition-all text-sm">
+                                점수 기록하기
+                            </button>
+                            <button id="btn-restart" class="py-3 px-5 bg-arcade-bg border-2 border-gray-700 text-white font-bold rounded hover:bg-gray-800 transition-all text-sm">
+                                다시하기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Force Block Spawn Button (Spacebar & Button Click) -->
+            <div class="w-full max-w-[440px] mx-auto px-1 flex flex-col space-y-2">
+                <button id="btn-force-up" class="w-full py-3 bg-gradient-to-r from-arcade-panel to-slate-900 border-2 border-arcade-secondary/40 hover:border-arcade-secondary rounded-lg text-xs text-arcade-secondary flex items-center justify-center space-x-2 transition-all active:scale-[0.98] shadow-md">
+                    <i data-lucide="chevrons-up" class="w-4 h-4 animate-pulse"></i>
+                    <span class="font-bold">블록 추가 (Space바 연동 / 300점 소모 - 시간 5% 충전 및 바닥 블록 상승 추가)</span>
+                </button>
+                <div class="text-center text-[11px] text-gray-500 font-sans">
+                    ⌨️ PC 플레이 시 <span class="text-arcade-primary font-bold">Spacebar</span>를 누르면 300점을 소모하여 블록 추가 기능이 작동합니다!
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Section: Leaderboard (Col 5) -->
+        <div class="lg:col-span-5 flex flex-col space-y-4">
+            
+            <!-- Realtime Leaderboard Banner -->
+            <div class="bg-gradient-to-r from-pink-950/20 via-arcade-panel to-arcade-panel border-2 border-arcade-primary/30 rounded-xl p-4 shadow-lg relative overflow-hidden">
+                <div class="flex items-start space-x-3">
+                    <div class="p-2 bg-arcade-primary/10 rounded border border-arcade-primary/30">
+                        <i data-lucide="trophy" class="w-5 h-5 text-arcade-primary animate-pulse"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-white text-sm">명예의 전당 시스템</h3>
+                        <p class="text-xs text-gray-400 mt-1 leading-relaxed">
+                            동일한 닉네임 사용 시 기존 최고 점수를 경신하여 덮어쓰거나, 새로운 별개 기록으로 추가하여 등록할 수 있습니다.
+                        </p>
+                        <div class="mt-2.5 flex items-center space-x-1.5">
+                            <span class="text-[10px] bg-arcade-primary/20 text-arcade-primary px-2.5 py-0.5 rounded border border-arcade-primary/30 font-bold">명예의 전당 랭킹판</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hall of Fame -->
+            <div class="bg-arcade-panel border-2 border-gray-800 rounded-xl p-4 flex-grow flex flex-col min-h-[380px] shadow-2xl relative">
+                <div class="flex justify-between items-center pb-3 mb-3 border-b border-gray-800">
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="trophy" class="w-5 h-5 text-arcade-yellow animate-pulse"></i>
+                        <span class="font-bold text-sm tracking-wider">명예의 전당 (TOP 10)</span>
+                    </div>
+                    <span class="text-[10px] text-gray-500 font-orbitron" id="db-status-badge">서버 접속 중...</span>
+                </div>
+
+                <!-- Leaderboard Container -->
+                <div id="leaderboard-container" class="space-y-2.5 flex-grow overflow-y-auto pr-1 max-h-[360px]">
+                    <!-- Skeleton Loader -->
+                    <div class="animate-pulse space-y-2.5" id="leaderboard-skeleton">
+                        <div class="h-12 bg-arcade-bg/60 rounded"></div>
+                        <div class="h-12 bg-arcade-bg/60 rounded"></div>
+                        <div class="h-12 bg-arcade-bg/60 rounded"></div>
+                        <div class="h-12 bg-arcade-bg/60 rounded"></div>
+                        <div class="h-12 bg-arcade-bg/60 rounded"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-900 py-3 text-center text-xs text-gray-600 bg-black/40">
+        <div>&copy; APF TIDY THREE MATCH PORT - Firestore Leaderboard System</div>
+    </footer>
+
+    <!-- Custom Nickname Decision Modal (RULE 1 Overwrite/New Option) -->
+    <div id="duplicate-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-arcade-panel border-2 border-arcade-primary rounded-xl p-6 w-full max-w-sm shadow-neon-pink">
+            <div class="text-center">
+                <div class="w-12 h-12 bg-arcade-primary/10 rounded-full border border-arcade-primary/30 flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="copy-check" class="w-6 h-6 text-arcade-primary"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2">이미 등록된 닉네임입니다!</h3>
+                <p class="text-xs text-gray-400 mb-5 leading-relaxed">
+                    '<span id="dup-nick-span" class="text-arcade-primary font-bold"></span>' 닉네임이 랭킹에 이미 등재되어 있습니다.<br>
+                    기존 기록을 <span class="text-white font-bold">덮어쓸지</span>, 또는 <span class="text-white font-bold">신규 기록으로 개별 등록</span>할지 결정하세요.
+                </p>
+
+                <!-- Stats Compare Box -->
+                <div class="grid grid-cols-2 gap-2 bg-black/40 p-3 rounded border border-gray-800 text-center text-xs mb-6">
+                    <div>
+                        <span class="text-gray-500 block text-[10px]">기존 최고 점수</span>
+                        <span id="dup-old-score" class="font-orbitron font-bold text-gray-300">0</span>
+                    </div>
+                    <div>
+                        <span class="text-arcade-primary block text-[10px]">현재 갱신 점수</span>
+                        <span id="dup-new-score" class="font-orbitron font-bold text-arcade-primary">0</span>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <button id="btn-choice-overwrite" class="w-full py-2.5 bg-gradient-to-r from-arcade-primary to-purple-600 text-white font-bold rounded hover:opacity-90 transition-all text-xs tracking-wide">
+                        기존 기록 위에 덮어쓰기 (Update)
+                    </button>
+                    <button id="btn-choice-new" class="w-full py-2.5 bg-arcade-bg border-gray-700 text-gray-300 hover:text-white font-bold rounded hover:bg-gray-800 transition-all text-xs tracking-wide">
+                        별도의 신규 기록으로 등록 (Create)
+                    </button>
+                    <button id="btn-choice-cancel" class="w-full py-2 text-gray-500 hover:text-gray-400 text-xs transition-all">
+                        등록 취소
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gameplay Guide Modal -->
+    <div id="howto-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-arcade-panel border-2 border-arcade-secondary rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-3 mb-4">
+                <h3 class="text-lg font-bold text-arcade-secondary flex items-center">
+                    <i data-lucide="help-circle" class="w-5 h-5 mr-1.5"></i> 삼단정리 완전정복법
+                </h3>
+                <button id="btn-close-howto" class="text-gray-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="space-y-3.5 text-xs text-gray-300 leading-relaxed max-h-[360px] overflow-y-auto pr-1">
+                <div>
+                    <h4 class="font-bold text-white mb-1">💡 블록 최상단 선택 시스템</h4>
+                    <p class="pl-2.5 text-gray-400">
+                        열의 어느 부분을 클릭하든 그 열의 가장 맨 위에 드러나 있는 블록이 즉각 선택됩니다. 
+                        중간에서 블록이 빠져나가면 그 위에 있던 블록들은 중력에 의해 바닥으로 차례대로 쿵 하고 떨어집니다. 이 낙하 이동을 노려 콤보를 만드는 것이 핵심입니다!
+                    </p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white mb-1">🔥 삼단정리 룰 (세로 3줄)</h4>
+                    <p class="pl-2.5 text-gray-400">
+                        가로나 대각선은 터지지 않습니다! 오직 **동일한 세로 한 줄(열)에 같은 색의 블록 3개**가 연속으로 쌓이는 순간 파괴가 발동합니다.
+                    </p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white mb-1">⚡ 피버 시스템 & 블록 추가</h4>
+                    <p class="pl-2.5 text-gray-400">
+                        쉬지 않고 연속 매칭을 일으켜 피버 게이지를 80% 이상 모으면 대망의 피버 타임이 격발되어 일정시간 동안 점수 획득이 대폭 늘어납니다. 
+                        위기 시 '블록 추가' 버튼(또는 Spacebar)을 누르면 점수를 300점 소모하여 시간 게이지를 5% 복원하고 맨 아랫줄에 새로운 블록들을 무작위 보급받을 수 있습니다.
+                    </p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white mb-1">⏳ 지속적인 블록 밀어올림</h4>
+                    <p class="pl-2.5 text-gray-400">
+                        블록이 모자라는 상황을 방지하기 위해 8초마다 새로운 무작위 블록들이 맨 아래 줄에서 차오릅니다.
+                    </p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white mb-1">⚡ 스코어 기반 가속화 난이도</h4>
+                    <p class="pl-2.5 text-gray-400">
+                        점수가 100,000점 올라갈 때마다 시간 게이지가 줄어드는 속도가 15%씩 누적 가속됩니다. 제한시간 바 위에서 실시간 가속 배율을 직접 확인해보세요!
+                    </p>
+                </div>
+            </div>
+            <button id="btn-close-howto-btn" class="w-full mt-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold rounded-lg transition-all border-b-2 border-gray-950">
+                알겠습니다!
+            </button>
+        </div>
+    </div>
+
+    <!-- Custom Floating Alert Toast -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-arcade-panel border-2 border-arcade-primary text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-neon-pink flex items-center space-x-2 opacity-0 pointer-events-none transition-all duration-300">
+        <i data-lucide="bell-ring" class="w-4 h-4 text-arcade-primary"></i>
+        <span id="toast-message">알림</span>
+    </div>
+
+    <!-- WEB AUDIO API RETRO SOUND SYNTHESIZER MODULE -->
+    <script>
+        class ArcadeSynth {
+            constructor() {
+                this.ctx = null;
+                this.isMuted = true; // 기본 음소거 상태로 시작하도록 보정 완료
+                this.melodyTimer = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            toggleMute() {
+                this.isMuted = !this.isMuted;
+                if (this.isMuted) {
+                    this.stopBGM();
+                } else {
+                    this.startBGM();
+                }
+                return this.isMuted;
+            }
+
+            playTone(freq, type, duration, volume = 0.1) {
+                if (this.isMuted || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gainNode = this.ctx.createGain();
+                    
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    
+                    gainNode.gain.setValueAtTime(volume, this.ctx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(this.ctx.destination);
+                    
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch (e) {
+                    console.log("Audio Synth Playback Blocked");
+                }
+            }
+
+            playSelect() {
+                this.init();
+                this.playTone(523.25, 'triangle', 0.1, 0.15); // C5 Blip
+            }
+
+            playMove() {
+                this.init();
+                if (this.isMuted || !this.ctx) return;
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(600, now + 0.15);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.15);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(now + 0.15);
+                } catch(e){}
+            }
+
+            playMatch(comboCount) {
+                this.init();
+                if (this.isMuted || !this.ctx) return;
+                const baseFreq = 523.25 * (1 + (comboCount * 0.1)); // 콤보 수치에 비례하여 높은 주파수 도달
+                const notes = [baseFreq, baseFreq * 1.25, baseFreq * 1.5, baseFreq * 2]; // Major Chord arpeggio
+                notes.forEach((freq, idx) => {
+                    setTimeout(() => {
+                        this.playTone(freq, 'sine', 0.25, 0.1);
+                    }, idx * 60);
+                });
+            }
+
+            playFever() {
+                this.init();
+                if (this.isMuted || !this.ctx) return;
+                const notes = [440, 554, 659, 880, 1109];
+                notes.forEach((freq, idx) => {
+                    setTimeout(() => {
+                        this.playTone(freq, 'square', 0.3, 0.08);
+                    }, idx * 80);
+                });
+            }
+
+            playGameOver() {
+                this.init();
+                if (this.isMuted || !this.ctx) return;
+                const notes = [587, 523, 440, 349, 293];
+                notes.forEach((freq, idx) => {
+                    setTimeout(() => {
+                        this.playTone(freq, 'sawtooth', 0.5, 0.12);
+                    }, idx * 120);
+                });
+            }
+
+            startBGM() {
+                this.init();
+                if (this.isMuted || !this.ctx) return;
+                this.stopBGM();
+
+                // 8비트 아케이드 멜로디 루프 생성
+                const melody = [
+                    261.63, 329.63, 392.00, 329.63, 293.66, 349.23, 440.00, 349.23,
+                    329.63, 392.00, 493.88, 392.00, 349.23, 440.00, 523.25, 440.00
+                ];
+                let noteIndex = 0;
+
+                this.melodyTimer = setInterval(() => {
+                    if (this.isMuted) return;
+                    this.playTone(melody[noteIndex], 'triangle', 0.18, 0.04);
+                    noteIndex = (noteIndex + 1) % melody.length;
+                }, 220);
+            }
+
+            stopBGM() {
+                if (this.melodyTimer) {
+                    clearInterval(this.melodyTimer);
+                    this.melodyTimer = null;
+                }
+            }
+        }
+
+        const audioSynth = new ArcadeSynth();
+
+        // Sound Toggle Click handler
+        document.getElementById('btn-sound').addEventListener('click', () => {
+            const isMuted = audioSynth.toggleMute();
+            const icon = document.getElementById('sound-icon');
+            if (isMuted) {
+                icon.setAttribute('data-lucide', 'volume-x');
+                icon.className = "w-5 h-5 text-red-500";
+            } else {
+                icon.setAttribute('data-lucide', 'volume-2');
+                icon.className = "w-5 h-5 text-arcade-secondary";
+            }
+            lucide.createIcons();
+        });
+    </script>
+
+    <!-- FIREBASE AND RETRO GAME MODULES -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+        import { 
+            getFirestore, 
+            collection, 
+            doc, 
+            setDoc, 
+            addDoc, 
+            deleteDoc, 
+            query, 
+            onSnapshot, 
+            getDocs 
+        } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+        import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+
+        // ----------------------------------------------------
+        // FIREBASE SETUP & SAFE DECODING
+        // ----------------------------------------------------
+        const minigameConfig = JSON.parse(atob(_mg_fbc));
+
+        const app = initializeApp(minigameConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        // 게임 ID를 clean에서 tidyup으로 전격 전환 완료
+        const gameId = 'tidyup';
+
+        // Firestore 동적 캡슐화 경로 바인딩 트리 규격 (RULE 1 준수)
+        const leaderboardPathTree = ['artifacts', gameId, 'public', 'data', 'leaderboard'];
+
+        const dbStatusBadge = document.getElementById('db-status-badge');
+        let currentUserId = null;
+        let isDbConnected = false;
+
+        // ----------------------------------------------------
+        // RETRO CANVAS TIDY MOMMY ENGINE
+        // ----------------------------------------------------
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        const COLS = 5;
+        const ROWS = 7;
+        let board = []; // 2차원 배열 grid [row][col]
+
+        // 7색 블록 픽셀색
+        const BLOCK_COLORS = [
+            '#ff3b93', // 핫핑크 (하트)
+            '#00f0ff', // 시안 (스타)
+            '#ffea00', // 골드 엘로우 (달)
+            '#39ff14', // 클로버 그린
+            '#9d4edd', // 퍼플 하프
+            '#ff6d00', // 오렌지 크로스
+            '#ffffff'  // 스페셜 화이트
+        ];
+
+        // 콤보 및 피버 상태값
+        let score = 0;
+        let combo = 0;
+        let feverProgress = 0; // 0 ~ 100
+        let feverMult = 1;
+        let feverTimer = 0;
+        let timeGauge = 100; // max 100
+        let gameActive = false;
+        let lastTime = 0;
+        let scoreSubmitting = false;
+
+        // 블록 생성 타이머 연계
+        let rowSpawnTimer = 0;
+        const ROW_SPAWN_INTERVAL = 8000; // 12초에서 8초마다 바닥에서 새 블록 라인 자동 차오름으로 변경 완료
+
+        // 선택 인풋 상태
+        let selectedBlock = null; // { r, c } 형태
+
+        // 파티클 시스템
+        let particles = [];
+        let scorePops = []; // 떠다니는 점수 판넬들
+
+        // 캐릭터 표정 상태 ('idle', 'pick', 'success', 'warning', 'fever')
+        let characterState = 'idle';
+        let characterStateTimer = 0;
+
+        // 레이아웃 동적 보정값
+        let cellSize = 0;
+        let gridX = 0;
+        let gridY = 0;
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            const logicWidth = rect.width;
+            const logicHeight = rect.height;
+
+            // 보드 그리드 계산 (상단 16%는 캐릭터 공간 확보)
+            const charAreaHeight = logicHeight * 0.16;
+            const maxBoardWidth = logicWidth * 0.95;
+            const maxBoardHeight = (logicHeight - charAreaHeight) * 0.95;
+
+            cellSize = Math.min(maxBoardWidth / COLS, maxBoardHeight / ROWS);
+            gridX = (logicWidth - (cellSize * COLS)) / 2;
+            gridY = charAreaHeight + ((logicHeight - charAreaHeight) - (cellSize * ROWS)) / 2;
+        }
+
+        // 보드판 완전 빌드
+        function initBoard() {
+            board = [];
+            for (let r = 0; r < ROWS; r++) {
+                board[r] = [];
+                for (let c = 0; c < COLS; c++) {
+                    board[r][c] = null;
+                }
+            }
+            // 하단 4칸 가득 채워서 시작
+            for (let r = ROWS - 4; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    board[r][c] = {
+                        colorIdx: Math.floor(Math.random() * (BLOCK_COLORS.length - 1)), // 화이트 제외 일반색
+                        scale: 1,
+                        animY: 0
+                    };
+                }
+            }
+        }
+
+        // 바닥에서부터 한 줄(Row)을 밀어 올리며 생성하는 핵심 로직
+        function spawnRowAtBottom(isBoost = false) {
+            if (!gameActive) return;
+
+            // 최상단 행(Row 0)에 이미 블록이 존재한다면, 더 이상 위로 밀려날 수 없어 게임 오버 처리
+            let overflow = false;
+            for (let c = 0; c < COLS; c++) {
+                if (board[0] && board[0][c] !== null) {
+                    overflow = true;
+                    break;
+                }
+            }
+
+            if (overflow) {
+                finishGame("블록이 천장에 닿아 게임오버 되었습니다!");
+                return;
+            }
+
+            // 모든 행을 위로 1칸씩 밀어 올림
+            for (let r = 0; r < ROWS - 1; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    board[r][c] = board[r + 1][c];
+                    if (board[r][c]) {
+                        // 위로 밀려 올라가는 부드러운 오프셋 역방향 연출 적용
+                        board[r][c].animY = cellSize;
+                    }
+                }
+            }
+
+            // 맨 아래 행(ROWS - 1)에 무작위 블록 줄 생성
+            for (let c = 0; c < COLS; c++) {
+                board[ROWS - 1][c] = {
+                    colorIdx: Math.floor(Math.random() * (BLOCK_COLORS.length - 1)),
+                    scale: 0.1, // 부드러운 팝 애니메이션 스케일 적용
+                    animY: 0
+                };
+            }
+
+            // 선택된 블록 좌표 보정 (위로 이동한 것에 대응)
+            if (selectedBlock) {
+                if (selectedBlock.r > 0) {
+                    selectedBlock.r -= 1;
+                } else {
+                    selectedBlock = null;
+                }
+            }
+
+            audioSynth.playMove();
+
+            if (isBoost) {
+                showToast("블록 추가! 시간 5% 회복 및 바닥에 새 블록 한 줄이 차올랐습니다.");
+            } else {
+                showToast("바닥에 새로운 블록 한 줄이 생성되었습니다!");
+            }
+
+            // 새로 차오른 상태에서 곧바로 세로 매칭이 있는지 검출
+            checkThreeMatches();
+        }
+
+        // 블록 추가 공통 연산기 (Space바 및 버튼 클릭 시 아래에서 위로 밀어올림 생성 가동)
+        function triggerBlockBoost() {
+            if (!gameActive) return;
+            const boostCost = 300;
+            if (score >= boostCost) {
+                score -= boostCost;
+                // 블록 추가 시 충전율 기존 15%에서 5%로 하향 조정 완료
+                timeGauge = Math.min(100, timeGauge + 5);
+                document.getElementById('game-score').textContent = score.toLocaleString();
+                
+                // 위에서 임의 투하가 아닌, 바닥에서 올라오는 밀어올림 방식으로 전환
+                spawnRowAtBottom(true);
+                audioSynth.playFever();
+            } else {
+                showToast("사용에 필요한 점수(300점)가 부족합니다.");
+            }
+        }
+
+        // 키보드 Spacebar 단축키 리스너 (블록 추가 기능 기동)
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.key === ' ') {
+                const activeEl = document.activeElement;
+                const nicknameInput = document.getElementById('player-nickname');
+                
+                // 게임 오버 닉네임 기입 중 오발 격발 가드
+                if (gameActive && activeEl !== nicknameInput) {
+                    e.preventDefault();
+                    triggerBlockBoost();
+                }
+            }
+        });
+
+        // 블록 추가 버튼 클릭 연동
+        document.getElementById('btn-force-up').addEventListener('click', triggerBlockBoost);
+
+        // 정밀한 중력 및 블록 하향 정리식
+        function applyGravity() {
+            let moved = false;
+            for (let c = 0; c < COLS; c++) {
+                // 아래에서 위로 역스캔하여 빈자리가 있으면 위에있는 블록을 아래로 이동
+                for (let r = ROWS - 1; r > 0; r--) {
+                    if (board[r] && board[r][c] === null) {
+                        // 위에 있는 첫번째 블록 탐색
+                        for (let kr = r - 1; kr >= 0; kr--) {
+                            if (board[kr] && board[kr][c] !== null) {
+                                board[r][c] = board[kr][c];
+                                board[r][c].animY = (kr - r) * cellSize; // 부드러운 낙하 가속 오프셋 지정
+                                board[kr][c] = null;
+                                moved = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            return moved;
+        }
+
+        // '세로 3개 나란히' 매칭 검출식 (Vertical 3-Match Only)
+        function checkThreeMatches() {
+            let matched = false;
+            let toErase = Array.from({length: ROWS}, () => Array(COLS).fill(false));
+
+            for (let c = 0; c < COLS; c++) {
+                for (let r = 0; r <= ROWS - 3; r++) {
+                    if (!board[r] || !board[r+1] || !board[r+2]) continue;
+                    const b1 = board[r][c];
+                    const b2 = board[r+1][c];
+                    const b3 = board[r+2][c];
+
+                    if (b1 && b2 && b3) {
+                        // 색상이 일치하거나 무지개/스페셜 등 매치 처리
+                        if (b1.colorIdx === b2.colorIdx && b2.colorIdx === b3.colorIdx) {
+                            toErase[r][c] = true;
+                            toErase[r+1][c] = true;
+                            toErase[r+2][c] = true;
+                            matched = true;
+                        }
+                    }
+                }
+            }
+
+            if (matched) {
+                let eraseCount = 0;
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        if (toErase[r][c] && board[r] && board[r][c]) {
+                            createExplodeEffect(r, c, board[r][c].colorIdx);
+                            board[r][c] = null;
+                            eraseCount++;
+                        }
+                    }
+                }
+
+                // 콤보 상승 및 점수 반영
+                combo++;
+                const calculatedEarn = eraseCount * 120 * combo * feverMult;
+                score += calculatedEarn;
+                
+                // 피버 콤보 획득량 하향 조정: 획득 계수를 기존 4에서 2로 대폭 조정
+                feverProgress = Math.min(100, feverProgress + (eraseCount * 2));
+                timeGauge = Math.min(100, timeGauge + (eraseCount * 1.5));
+
+                // 콤보 팝 업 생성
+                createScorePop(COLS / 2, ROWS / 2, `+${calculatedEarn} (${combo} COMBO!)`);
+
+                // 사운드 연주
+                audioSynth.playMatch(combo);
+
+                characterState = 'success';
+                characterStateTimer = 40;
+
+                // 점수 실시간 연동 화면 반영
+                document.getElementById('game-score').textContent = score.toLocaleString();
+                document.getElementById('game-combo').textContent = combo;
+
+                // 연속 콤보 낙하 처리 재귀 호출
+                setTimeout(() => {
+                    applyGravity();
+                    checkThreeMatches();
+                }, 180);
+            }
+        }
+
+        // 터치/클릭 삼단정리 핵심 인풋 프로세싱
+        function handleInput(clientX, clientY) {
+            if (!gameActive) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = rect.width / (canvas.width / window.devicePixelRatio);
+            const scaleY = rect.height / (canvas.height / window.devicePixelRatio);
+
+            const x = (clientX - rect.left) / scaleX;
+            const y = (clientY - rect.top) / scaleY;
+
+            // 터치 영역이 보드 내부인지 검사
+            const c = Math.floor((x - gridX) / cellSize);
+            const r = Math.floor((y - gridY) / cellSize);
+
+            if (c >= 0 && c < COLS) {
+                audioSynth.playSelect();
+                
+                if (selectedBlock) {
+                    // 동일 블록 재선택 시 해제
+                    if (selectedBlock.r === r && selectedBlock.c === c) {
+                        selectedBlock = null;
+                    } 
+                    // 빈 공간 또는 다른 열 터치시 블록 상단 낙하 이동 수행
+                    else {
+                        const targetCol = c;
+                        // 선택한 열의 최상단 공간 검사
+                        if (board[0] && !board[0][targetCol]) {
+                            const sourceBlock = board[selectedBlock.r][selectedBlock.c];
+                            
+                            // 원본 제거
+                            board[selectedBlock.r][selectedBlock.c] = null;
+
+                            // 타겟 열의 맨 위에 안착 처리
+                            board[0][targetCol] = sourceBlock;
+                            board[0][targetCol].animY = -cellSize; // 공중 낙진 오프셋 가미
+
+                            // 이펙트 발생
+                            audioSynth.playMove();
+                            createSlideParticles(selectedBlock.c, selectedBlock.r, targetCol, 0, sourceBlock.colorIdx);
+
+                            selectedBlock = null;
+
+                            // 중력 정리 및 연속 매칭
+                            applyGravity();
+                            checkThreeMatches();
+                        } else {
+                            // 열이 꽉 차서 이동 불가능한 경우 재선택 분기 (항상 해당 열의 가장 위의 블록만 지정)
+                            let topRow = -1;
+                            for (let i = 0; i < ROWS; i++) {
+                                if (board[i] && board[i][c] !== null) {
+                                    topRow = i;
+                                    break;
+                                }
+                            }
+                            if (topRow !== -1) {
+                                selectedBlock = { r: topRow, c };
+                            } else {
+                                selectedBlock = null;
+                            }
+                        }
+                    }
+                } else {
+                    // 첫 터치: 해당 열(c)에서 가장 맨 위에 위치해 있는 블록만 강제 선택되도록 격리
+                    let topRow = -1;
+                    for (let i = 0; i < ROWS; i++) {
+                        if (board[i] && board[i][c] !== null) {
+                            topRow = i;
+                            break;
+                        }
+                    }
+                    if (topRow !== -1) {
+                        selectedBlock = { r: topRow, c: c };
+                        characterState = 'pick';
+                        characterStateTimer = 30;
+                    }
+                }
+            } else {
+                selectedBlock = null;
+            }
+        }
+
+        canvas.addEventListener('mousedown', (e) => handleInput(e.clientX, e.clientY));
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                handleInput(e.touches[0].clientX, e.touches[0].clientY);
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // ----------------------------------------------------
+        // VISUAL EFFECTS & PARTICLE LOGIC
+        // ----------------------------------------------------
+        function createExplodeEffect(r, c, colorIdx) {
+            const px = gridX + c * cellSize + cellSize / 2;
+            const py = gridY + r * cellSize + cellSize / 2;
+            const color = BLOCK_COLORS[colorIdx];
+
+            for (let i = 0; i < 12; i++) {
+                particles.push({
+                    x: px,
+                    y: py,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    size: Math.random() * 4 + 3,
+                    alpha: 1,
+                    life: 1,
+                    decay: Math.random() * 0.04 + 0.03,
+                    color: color
+                });
+            }
+        }
+
+        // 슬라이드 파티클
+        function createSlideParticles(sc, sr, tc, tr, colorIdx) {
+            const startX = gridX + sc * cellSize + cellSize / 2;
+            const startY = gridY + sr * cellSize + cellSize / 2;
+            const endX = gridX + tc * cellSize + cellSize / 2;
+            const endY = gridY + tr * cellSize + cellSize / 2;
+            const color = BLOCK_COLORS[colorIdx];
+
+            for (let i = 0; i < 6; i++) {
+                particles.push({
+                    x: startX + (endX - startX) * (i / 6),
+                    y: startY + (endY - startY) * (i / 6),
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: (Math.random() - 0.5) * 2,
+                    size: Math.random() * 3 + 2,
+                    alpha: 0.8,
+                    life: 0.8,
+                    decay: 0.06,
+                    color: color
+                });
+            }
+        }
+
+        function createScorePop(c, r, text) {
+            scorePops.push({
+                x: gridX + c * cellSize,
+                y: gridY + r * cellSize,
+                text: text,
+                alpha: 1,
+                life: 1,
+                decay: 0.02
+            });
+        }
+
+        // ----------------------------------------------------
+        // TICKER GAME LOOP AND RENDER
+        // ----------------------------------------------------
+        function update(dt) {
+            // 점수가 100,000점 높아질 때마다 제한 시간 감소가 복리로 15%씩 가속화됨 (x1.00, x1.15, x1.30 등등)
+            const speedMultiplier = 1 + Math.floor(score / 100000) * 0.15;
+            const baseDecay = isFeverActive ? 0.025 : 0.045;
+            const decay = baseDecay * speedMultiplier;
+            
+            timeGauge = Math.max(0, timeGauge - decay * (dt / 16));
+
+            // UI 연계 동기화
+            const bar = document.getElementById('time-gauge');
+            bar.style.width = `${timeGauge}%`;
+            document.getElementById('time-percentage').textContent = `${Math.floor(timeGauge)}%`;
+            
+            // 배율 텍스트 세팅
+            document.getElementById('speed-level').textContent = `(x${speedMultiplier.toFixed(2)})`;
+
+            if (timeGauge < 25) {
+                bar.classList.add('bg-red-500');
+                characterState = 'warning';
+            } else {
+                bar.classList.remove('bg-red-500');
+            }
+
+            if (timeGauge <= 0) {
+                finishGame("시간 초과! 제한시간이 모두 소모되었습니다.");
+            }
+
+            // 자동 블록 라인 누적 타이머 핸들링
+            if (gameActive) {
+                rowSpawnTimer += dt;
+                if (rowSpawnTimer >= ROW_SPAWN_INTERVAL) {
+                    rowSpawnTimer = 0;
+                    spawnRowAtBottom();
+                }
+            }
+
+            // 1) 비활성화 대기 시 피버 게이지 감퇴: 가속화 난이도 배율(speedMultiplier)에 완전히 비례하여 훨씬 빠르게 떨어짐
+            if (feverProgress > 0 && !isFeverActive) {
+                const passiveDecayBase = 0.12; 
+                feverProgress -= passiveDecayBase * speedMultiplier * (dt / 16);
+                if (feverProgress < 0) feverProgress = 0;
+            }
+            
+            // 피버 발동 문턱값 체크
+            if (feverProgress >= 80 && !isFeverActive) {
+                triggerFever(true);
+            }
+            
+            // 2) 피버 활성화 시: 피버 잔여 시간이 감퇴 속도(배율의 제곱 단위)에 의거하여 배로 빠르게 마모됨
+            if (isFeverActive) {
+                // speedMultiplier의 제곱으로 시간 감퇴 연출 적용하여 고배율 구간 피버 지속 극단적 단축화
+                const feverDrainRate = dt * Math.pow(speedMultiplier, 2);
+                feverTimer -= feverDrainRate;
+                feverProgress = (feverTimer / 8000) * 100;
+                
+                if (feverTimer <= 0) {
+                    triggerFever(false);
+                }
+            }
+
+            document.getElementById('fever-progress-bar').style.width = `${feverProgress}%`;
+
+            // 파티클 업데이트
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= p.decay;
+                if (p.alpha <= 0) particles.splice(i, 1);
+            }
+
+            // 스코어 팝 업데이트
+            for (let i = scorePops.length - 1; i >= 0; i--) {
+                const sp = scorePops[i];
+                sp.y -= 0.8;
+                sp.alpha -= sp.decay;
+                if (sp.alpha <= 0) scorePops.splice(i, 1);
+            }
+
+            // 캐릭터 타이머 갱신
+            if (characterStateTimer > 0) {
+                characterStateTimer--;
+                if (characterStateTimer <= 0 && !isFeverActive) {
+                    characterState = 'idle';
+                }
+            }
+
+            // 블록 오프셋 및 스케일 애니메이션 처리
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (!board || !board[r]) continue;
+                    const block = board[r][c];
+                    if (block) {
+                        // 새로 추가되어 작은 블록들을 점진적으로 1배까지 스케일업
+                        if (block.scale < 1) {
+                            block.scale += 0.08;
+                            if (block.scale > 1) block.scale = 1;
+                        }
+                        // 위로 밀리거나 낙하할 때 Y축 애니메이션 안정화
+                        if (block.animY < 0) {
+                            block.animY += 4; // 아래로 가속 하강
+                            if (block.animY > 0) block.animY = 0;
+                        } else if (block.animY > 0) {
+                            block.animY -= 4; // 위로 밀어올림 가속 보정
+                            if (block.animY < 0) block.animY = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        let isFeverActive = false;
+        function triggerFever(active) {
+            isFeverActive = active;
+            if (active) {
+                feverMult = 3;
+                feverTimer = 8000; // 8초간 지속
+                characterState = 'fever';
+                audioSynth.playFever();
+                document.getElementById('fever-card').classList.add('shadow-neon-pink', 'border-arcade-primary');
+                document.getElementById('game-fever-mult').textContent = 'x3 FEVER';
+                showToast("🔥 피버 타임 격발! 점수 획득 3배 증폭! 🔥");
+            } else {
+                feverMult = 1;
+                feverProgress = 0;
+                characterState = 'idle';
+                document.getElementById('fever-card').classList.remove('shadow-neon-pink', 'border-arcade-primary');
+                document.getElementById('game-fever-mult').textContent = 'x1';
+            }
+        }
+
+        // 고화질 캐릭터 그리기 루틴
+        function drawMommyCharacter(ctx, lx, ly) {
+            const cx = lx / 2;
+            const cy = ly * 0.08;
+
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            // 표정에 따라 얼굴 주위 아우라 연출
+            if (characterState === 'fever') {
+                const scale = 1 + Math.sin(Date.now() / 80) * 0.08;
+                ctx.scale(scale, scale);
+                // 노란색 후광 광선 그리기
+                ctx.fillStyle = 'rgba(255, 234, 0, 0.2)';
+                ctx.beginPath();
+                ctx.arc(0, 0, 45, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 1. 머리 그리기 (클래식 보라 뽀글이 펌헤어)
+            ctx.fillStyle = '#7b2cbf';
+            ctx.beginPath();
+            ctx.arc(-22, -15, 18, 0, Math.PI * 2);
+            ctx.arc(22, -15, 18, 0, Math.PI * 2);
+            ctx.arc(-15, -28, 20, 0, Math.PI * 2);
+            ctx.arc(15, -28, 20, 0, Math.PI * 2);
+            ctx.arc(0, -32, 22, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 2. 귀여운 동그란 얼굴 살구색
+            ctx.fillStyle = '#ffdbb5';
+            ctx.beginPath();
+            ctx.arc(0, -5, 24, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 3. 눈과 입 장식
+            ctx.fillStyle = '#151324';
+            if (characterState === 'success') {
+                // 웃는 눈
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#151324';
+                ctx.beginPath();
+                ctx.arc(-10, -8, 5, Math.PI, 0, false);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(10, -8, 5, Math.PI, 0, false);
+                ctx.stroke();
+
+                // 활짝 벌린 웃는 입
+                ctx.fillStyle = '#ff4d6d';
+                ctx.beginPath();
+                ctx.arc(0, 2, 8, 0, Math.PI);
+                ctx.fill();
+            } 
+            else if (characterState === 'warning') {
+                // 땀 한방울과 당황한 눈
+                ctx.beginPath();
+                ctx.arc(-9, -6, 3, 0, Math.PI * 2);
+                ctx.arc(9, -6, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 놀란 작은 동그라미 입
+                ctx.fillStyle = '#d90429';
+                ctx.beginPath();
+                ctx.arc(0, 4, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 파란 땀방울
+                ctx.fillStyle = '#00f0ff';
+                ctx.beginPath();
+                ctx.arc(-22, -8, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            else if (characterState === 'fever') {
+                // 불타는 투지안경 또는 별 눈 모양
+                ctx.fillStyle = '#ffea00';
+                ctx.beginPath();
+                ctx.arc(-9, -6, 5, 0, Math.PI * 2);
+                ctx.arc(9, -6, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#080710';
+                ctx.beginPath();
+                ctx.arc(-9, -6, 2, 0, Math.PI * 2);
+                ctx.arc(9, -6, 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 장난스런 입모양
+                ctx.strokeStyle = '#ff3b93';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(-6, 4);
+                ctx.quadraticCurveTo(0, 10, 6, 4);
+                ctx.stroke();
+            }
+            else {
+                // 평온한 평상시 눈
+                ctx.beginPath();
+                ctx.arc(-9, -6, 3.5, 0, Math.PI * 2);
+                ctx.arc(9, -6, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 미소선 입
+                ctx.strokeStyle = '#ff3b93';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(0, 2, 4, 0, Math.PI);
+                ctx.stroke();
+            }
+
+            // 4. 귀여운 선글라스나 볼터치
+            ctx.fillStyle = 'rgba(255, 59, 147, 0.4)';
+            ctx.beginPath();
+            ctx.arc(-16, -2, 5, 0, Math.PI * 2);
+            ctx.arc(16, -2, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 5. 말풍선 상태 텍스트 출력
+            let speakText = "블록을 3개씩 차곡차곡 정리하렴!";
+            if (characterState === 'pick') speakText = "가장 맨 위에 있는 놈을 골랐단다~";
+            if (characterState === 'success') speakText = "아주 깔끔하구나! 정리 대성공!";
+            if (characterState === 'warning') speakText = "서두르렴, 시간이 얼마 없단다!";
+            if (characterState === 'fever') speakText = "정리의 달인 경지에 올랐구나!!!";
+
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 11px DungGeunMo';
+            ctx.textAlign = 'center';
+            ctx.fillText(speakText, 0, 34);
+
+            ctx.restore();
+        }
+
+        function renderGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Guard against uninitialized board entirely (Fixes the reading properties of undefined '0' crash)
+            if (!board || board.length < ROWS) return;
+
+            const logicWidth = canvas.width / window.devicePixelRatio;
+            const logicHeight = canvas.height / window.devicePixelRatio;
+
+            // 1. 귀여운 캐릭터 공간 드로잉
+            drawMommyCharacter(ctx, logicWidth, logicHeight);
+
+            // 2. 보드 배경 스킨 그리기 (아케이드 네온 격자)
+            ctx.fillStyle = '#100e1e';
+            ctx.fillRect(gridX, gridY, cellSize * COLS, cellSize * ROWS);
+
+            ctx.strokeStyle = '#ff3b93';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(gridX, gridY, cellSize * COLS, cellSize * ROWS);
+
+            // 네온 무늬 안쪽 그리드 선
+            ctx.strokeStyle = 'rgba(255, 59, 147, 0.15)';
+            ctx.lineWidth = 1;
+            for (let r = 1; r < ROWS; r++) {
+                ctx.beginPath();
+                ctx.moveTo(gridX, gridY + r * cellSize);
+                ctx.lineTo(gridX + cellSize * COLS, gridY + r * cellSize);
+                ctx.stroke();
+            }
+            for (let c = 1; c < COLS; c++) {
+                ctx.beginPath();
+                ctx.moveTo(gridX + c * cellSize, gridY);
+                ctx.lineTo(gridX + c * cellSize, gridY + cellSize * ROWS);
+                ctx.stroke();
+            }
+
+            // 3. 선택 가이드 프레임
+            if (selectedBlock) {
+                const sx = gridX + selectedBlock.c * cellSize;
+                const sy = gridY + selectedBlock.r * cellSize;
+
+                ctx.fillStyle = 'rgba(0, 240, 255, 0.25)';
+                ctx.fillRect(sx, sy, cellSize, cellSize);
+
+                ctx.strokeStyle = '#00f0ff';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(sx + 2, sy + 2, cellSize - 4, cellSize - 4);
+            }
+
+            // 4. 블록 렌더링 (삼단정리 전용 픽셀아이콘 스킨)
+            for (let r = 0; r < ROWS; r++) {
+                if (!board[r]) continue; // Double safe check
+                for (let c = 0; c < COLS; c++) {
+                    const block = board[r][c];
+                    if (block) {
+                        const actualX = gridX + c * cellSize;
+                        const actualY = gridY + r * cellSize + block.animY;
+                        const blockMargin = cellSize * 0.1;
+                        const bSize = cellSize - blockMargin * 2;
+
+                        ctx.save();
+                        // 스케일 변동 애니메이션 적용
+                        ctx.translate(actualX + cellSize / 2, actualY + cellSize / 2);
+                        ctx.scale(block.scale, block.scale);
+
+                        // ... 블록 배경 ...
+                        ctx.fillStyle = BLOCK_COLORS[block.colorIdx];
+                        ctx.beginPath();
+                        ctx.roundRect(-bSize / 2, -bSize / 2, bSize, bSize, 8);
+                        ctx.fill();
+
+                        // 3D 입체 그라디언트 캡 씌우기
+                        const grad = ctx.createLinearGradient(0, -bSize / 2, 0, bSize / 2);
+                        grad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+                        grad.addColorStop(0.3, 'rgba(255, 255, 255, 0)');
+                        grad.addColorStop(1, 'rgba(0, 0, 0, 0.35)');
+                        ctx.fillStyle = grad;
+                        ctx.beginPath();
+                        ctx.roundRect(-bSize / 2, -bSize / 2, bSize, bSize, 8);
+                        ctx.fill();
+
+                        // 블록 고유 픽셀 아이콘 드로잉 (접근성 극대화)
+                        ctx.fillStyle = '#151324';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.font = `bold ${Math.floor(bSize * 0.45)}px DungGeunMo`;
+                        
+                        let charSign = "♥";
+                        if (block.colorIdx === 0) charSign = "♥";
+                        if (block.colorIdx === 1) charSign = "★";
+                        if (block.colorIdx === 2) charSign = "●";
+                        if (block.colorIdx === 3) charSign = "♣";
+                        if (block.colorIdx === 4) charSign = "▲";
+                        if (block.colorIdx === 5) charSign = "◆";
+                        if (block.colorIdx === 6) charSign = "◼";
+
+                        ctx.fillText(charSign, 0, 1);
+
+                        ctx.restore();
+                    }
+                }
+            }
+
+            // 5. 파티클 이펙트 그리기
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // 6. 스코어 콤보 팝 텍스트 그리기
+            scorePops.forEach(sp => {
+                ctx.save();
+                ctx.globalAlpha = sp.alpha;
+                ctx.fillStyle = '#ffea00';
+                ctx.strokeStyle = '#151324';
+                ctx.lineWidth = 3;
+                ctx.font = 'bold 15px DungGeunMo';
+                ctx.textAlign = 'center';
+                ctx.strokeText(sp.text, sp.x + cellSize / 2, sp.y);
+                ctx.fillText(sp.text, sp.x + cellSize / 2, sp.y);
+                ctx.restore();
+            });
+        }
+
+        function gameLoop(timestamp) {
+            if (!gameActive) return;
+
+            if (!lastTime) lastTime = timestamp;
+            const dt = timestamp - lastTime;
+            lastTime = timestamp;
+
+            update(dt);
+            renderGame();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 게임 구동 및 재시작
+        function initNewGame() {
+            score = 0;
+            combo = 0;
+            feverProgress = 0;
+            feverMult = 1;
+            timeGauge = 100;
+            rowSpawnTimer = 0;
+            particles = [];
+            scorePops = [];
+            selectedBlock = null;
+            characterState = 'idle';
+
+            document.getElementById('game-score').textContent = "0";
+            document.getElementById('game-combo').textContent = "0";
+            document.getElementById('game-fever-mult').textContent = "x1";
+            document.getElementById('fever-progress-bar').style.width = "0%";
+            document.getElementById('speed-level').textContent = "(x1.00)";
+
+            initBoard();
+            resizeCanvas();
+
+            gameActive = true;
+            lastTime = 0;
+
+            document.getElementById('game-start-layer').classList.add('hidden');
+            document.getElementById('game-over-layer').classList.add('hidden');
+
+            audioSynth.startBGM();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function finishGame(reason = "제한시간이 모두 소모되었습니다.") {
+            gameActive = false;
+            audioSynth.stopBGM();
+            audioSynth.playGameOver();
+            document.getElementById('final-score').textContent = score.toLocaleString();
+            document.getElementById('game-over-reason').textContent = reason;
+            document.getElementById('game-over-layer').classList.remove('hidden');
+        }
+
+        document.getElementById('btn-start-game').addEventListener('click', initNewGame);
+        document.getElementById('btn-restart').addEventListener('click', initNewGame);
+
+        // ----------------------------------------------------
+        // UTILS
+        // ----------------------------------------------------
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            toast.classList.add('opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+
+        // Howto Modal Logic
+        const btnHowTo = document.getElementById('btn-how-to');
+        const btnCloseHowTo = document.getElementById('btn-close-howto');
+        const btnCloseHowToBtn = document.getElementById('btn-close-howto-btn');
+        const howtoModal = document.getElementById('howto-modal');
+
+        const openHowTo = () => howtoModal.classList.remove('hidden');
+        const closeHowTo = () => howtoModal.classList.add('hidden');
+
+        btnHowTo.addEventListener('click', openHowTo);
+        btnCloseHowTo.addEventListener('click', closeHowTo);
+        btnCloseHowToBtn.addEventListener('click', closeHowTo);
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            renderGame();
+        });
+
+
+        // ----------------------------------------------------
+        // FIRESTORE LEADERBOARD SYNC (Rules 1, 2, 3 준수)
+        // ----------------------------------------------------
+        const leaderboardContainer = document.getElementById('leaderboard-container');
+        const leaderboardSkeleton = document.getElementById('leaderboard-skeleton');
+        let rawLeaderboardCache = [];
+
+        // DB 랭킹 구독 (RULE 3 선인증 후 쿼리 원칙 준수)
+        const initLeaderboardRealtimeSync = (user) => {
+            if (!user) return;
+
+            const colRef = collection(db, ...leaderboardPathTree);
+            
+            // RULE 2: 복합 인덱스 필요 에러 회피를 위해 정렬/필터링을 JS 메모리단에서 실행
+            onSnapshot(colRef, (snapshot) => {
+                dbStatusBadge.textContent = "CONNECTED (LIVE)";
+                dbStatusBadge.className = "text-[10px] text-arcade-accent font-orbitron";
+                isDbConnected = true;
+
+                let items = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    items.push({ id: doc.id, ...data });
+                });
+
+                // JS 메모리 정렬 (내림차순)
+                items.sort((a, b) => b.score - a.score);
+                rawLeaderboardCache = items;
+
+                // TOP 10 렌더링 전달
+                renderLeaderboardList(items.slice(0, 10));
+
+            }, (error) => {
+                console.error("Firestore Listen Error:", error);
+                dbStatusBadge.textContent = "SYNC DISCONNECTED";
+                dbStatusBadge.className = "text-[10px] text-red-500 font-orbitron";
+            });
+        };
+
+        // 명예의 전당 UI 바인딩
+        function renderLeaderboardList(list) {
+            leaderboardSkeleton.classList.add('hidden');
+            leaderboardContainer.innerHTML = '';
+
+            if (list.length === 0) {
+                leaderboardContainer.innerHTML = `
+                    <div class="text-center py-12 text-gray-500 text-xs">
+                        <i data-lucide="award" class="w-8 h-8 mx-auto mb-2 opacity-40 text-arcade-primary"></i>
+                        명예의 전당 기록이 아직 없습니다.<br>첫 전설의 정리가가 되어 보세요!
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            list.forEach((item, index) => {
+                const isMyRecord = currentUserId && item.userId === currentUserId;
+                const regDate = new Date(item.timestamp).toLocaleDateString('ko-KR', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'});
+
+                let trophySymbol = `<span class="font-orbitron font-bold text-gray-500 w-5 text-center text-xs">${index + 1}</span>`;
+                if (index === 0) trophySymbol = `<span class="bg-arcade-yellow text-black font-black w-5 h-5 rounded flex items-center justify-center text-xs">1</span>`;
+                if (index === 1) trophySymbol = `<span class="bg-gray-300 text-black font-black w-5 h-5 rounded flex items-center justify-center text-xs">2</span>`;
+                if (index === 2) trophySymbol = `<span class="bg-amber-600 text-white font-black w-5 h-5 rounded flex items-center justify-center text-xs">3</span>`;
+
+                const entry = document.createElement('div');
+                entry.className = `p-3 rounded border flex justify-between items-center transition-all ${
+                    isMyRecord 
+                    ? 'bg-arcade-primary/10 border-arcade-primary shadow-neon-pink' 
+                    : 'bg-black/30 border-gray-800 hover:border-gray-700'
+                }`;
+
+                entry.innerHTML = `
+                    <div class="flex items-center space-x-3 overflow-hidden">
+                        ${trophySymbol}
+                        <div class="truncate">
+                            <span class="font-bold text-white text-sm block truncate">${item.nickname}</span>
+                            <span class="text-[9px] text-gray-500 block">${regDate}</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="font-orbitron text-sm font-bold tracking-wider ${isMyRecord ? 'text-arcade-primary' : 'text-arcade-secondary'}">${item.score.toLocaleString()}</span>
+                        <span class="text-[9px] text-gray-600 block">점</span>
+                    </div>
+                `;
+
+                leaderboardContainer.appendChild(entry);
+            });
+        }
+
+        // 인증 핸들러 (RULE 3)
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUserId = user.uid;
+                initLeaderboardRealtimeSync(user);
+            } else {
+                currentUserId = null;
+            }
+        });
+
+
+        // ----------------------------------------------------
+        // SCORE SUBMISSION & NICKNAME CHOICE MODAL CONFLICT
+        // ----------------------------------------------------
+        const btnSubmitScore = document.getElementById('btn-submit-score');
+        const inputNickname = document.getElementById('player-nickname');
+        const dupModal = document.getElementById('duplicate-modal');
+
+        let pendingPayload = null;
+
+        btnSubmitScore.addEventListener('click', async () => {
+            if (scoreSubmitting) return;
+            if (!isDbConnected) {
+                showToast("인증/서버 연결이 아직 완료되지 않았습니다.");
+                return;
+            }
+
+            const nickname = inputNickname.value.trim();
+            if (!nickname) {
+                showToast("등록할 닉네임을 입력해 주세요.");
+                return;
+            }
+
+            pendingPayload = {
+                nickname: nickname,
+                score: score,
+                timestamp: Date.now(),
+                userId: currentUserId
+            };
+
+            scoreSubmitting = true;
+            btnSubmitScore.disabled = true;
+            btnSubmitScore.textContent = "검사 중...";
+
+            try {
+                // 이미 명예의 전당 전역 기록에 동일한 닉네임이 존재하는지 검출
+                const collision = rawLeaderboardCache.find(r => r.nickname === nickname);
+
+                if (collision) {
+                    if (score > collision.score) {
+                        // 기존 점수보다 이번 점수가 높으므로 커스텀 컨펌 모달 표출
+                        document.getElementById('dup-nick-span').textContent = nickname;
+                        document.getElementById('dup-old-score').textContent = collision.score.toLocaleString();
+                        document.getElementById('dup-new-score').textContent = score.toLocaleString();
+                        
+                        pendingPayload.existingDocId = collision.id;
+                        dupModal.classList.remove('hidden');
+                    } else {
+                        // 기존 점수보다 낮다면 팝업 없이 신규 기록 자동 추가
+                        await writeNewEntryToFirestore(pendingPayload);
+                    }
+                } else {
+                    // 미중복건 다이렉트 신규 기입
+                    await writeNewEntryToFirestore(pendingPayload);
+                }
+
+            } catch (err) {
+                console.error("Submission Failure:", err);
+                showToast("데이터 전송 중 오류 발생.");
+            } finally {
+                scoreSubmitting = false;
+                btnSubmitScore.disabled = false;
+                btnSubmitScore.textContent = "점수 기록하기";
+            }
+        });
+
+        // 덮어쓰기 분기 1 선택 시
+        document.getElementById('btn-choice-overwrite').addEventListener('click', async () => {
+            if (!pendingPayload) return;
+            dupModal.classList.add('hidden');
+            
+            try {
+                // 기존 기입 ID 그대로 타겟팅하여 대체 수정 (Set/Update)
+                const docRef = doc(db, ...leaderboardPathTree, pendingPayload.existingDocId);
+                await setDoc(docRef, {
+                    nickname: pendingPayload.nickname,
+                    score: pendingPayload.score,
+                    timestamp: pendingPayload.timestamp,
+                    userId: pendingPayload.userId
+                });
+                showToast("기존 기록이 성공적으로 업데이트되었습니다!");
+                document.getElementById('game-over-layer').classList.add('hidden');
+            } catch (err) {
+                console.error("Update Error:", err);
+                showToast("기록 업데이트에 실패했습니다.");
+            }
+        });
+
+        // 별개 독립 저장 분기 2 선택 시
+        document.getElementById('btn-choice-new').addEventListener('click', async () => {
+            if (!pendingPayload) return;
+            dupModal.classList.add('hidden');
+            await writeNewEntryToFirestore(pendingPayload);
+        });
+
+        // 컨펌 취소 시
+        document.getElementById('btn-choice-cancel').addEventListener('click', () => {
+            dupModal.classList.add('hidden');
+            pendingPayload = null;
+        });
+
+        // Firestore 순수 쓰기 함수
+        async function writeNewEntryToFirestore(payload) {
+            try {
+                const collectionRef = collection(db, ...leaderboardPathTree);
+                await addDoc(collectionRef, {
+                    nickname: payload.nickname,
+                    score: payload.score,
+                    timestamp: payload.timestamp,
+                    userId: payload.userId
+                });
+                showToast("성공적으로 명예의 전당에 기입되었습니다!");
+                document.getElementById('game-over-layer').classList.add('hidden');
+            } catch (err) {
+                console.error("Firestore Add Error:", err);
+                showToast("기록 인서트 오류가 발생했습니다.");
+            }
+        }
+
+
+        // ----------------------------------------------------
+        // INITIALIZER
+        // ----------------------------------------------------
+        window.onload = async function() {
+            // 인증 단계 트리거 (RULE 3 선인증 원칙 완벽 준수)
+            try {
+                dbStatusBadge.textContent = "CONNECTING...";
+                await signInAnonymously(auth);
+            } catch (err) {
+                console.error("Anonymous Authentication Failed:", err);
+                dbStatusBadge.textContent = "OFFLINE MODE";
+                showToast("익명 보안 인증 실패. 로컬 싱글 플레이 가능.");
+            }
+
+            resizeCanvas();
+            initBoard();
+            renderGame();
+            lucide.createIcons();
+        };
+
+    </script>
+  <script defer src="/minigame/copyright-notice.js"></script>
+</body>
+</html>

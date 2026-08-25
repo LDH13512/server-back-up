@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>오락실 SNAKE</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #0f172a;
+    }
+    .neon-text {
+      font-family: 'Orbitron', sans-serif;
+      text-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+    }
+    .neon-border {
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+    }
+    /* 스크롤바 커스텀 */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #10b981;
+      border-radius: 3px;
+    }
+    /* 터치 조작 시 하이라이트 방지 */
+    button {
+      -webkit-tap-highlight-color: transparent;
+    }
+  </style>
+  <script src="/_runtime/firebase-config?app=minigame"></script>
+  <meta name="author" content="게시판 운영자">
+  <meta name="copyright" content="© 2026 게시판">
+  <meta name="rights" content="AI 도구를 제작 보조로 활용해 운영자가 기획·구현·편집한 자체 콘텐츠">
+</head>
+<body class="flex flex-col min-h-screen text-slate-100 overflow-x-hidden">
+
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-4 py-3 sticky top-0 z-50">
+    <div class="max-w-5xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="bg-emerald-500 text-slate-950 p-2 rounded-xl shadow-lg shadow-emerald-500/20">
+          <i data-lucide="gamepad-2" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 id="game-title-header" class="font-bold text-lg leading-none tracking-wider text-emerald-400">오락실 SNAKE</h1>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="soundToggle" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition text-slate-300">
+          <i data-lucide="volume-2" id="soundIcon" class="w-5 h-5"></i>
+        </button>
+        <button id="helpBtn" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition text-slate-300">
+          <i data-lucide="help-circle" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-5xl w-full mx-auto p-4 flex flex-col gap-6 items-center justify-start">
+    
+    <div class="w-full flex flex-col items-center gap-4">
+      
+      <div class="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 flex justify-between items-center shadow-2xl">
+        <div class="flex items-center gap-3">
+          <div class="bg-amber-500/10 text-amber-500 p-2.5 rounded-xl">
+            <i data-lucide="trophy" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400 uppercase tracking-wider font-semibold">최고 기록</div>
+            <div id="highScoreText" class="text-xl font-bold neon-text text-amber-400">000,000</div>
+          </div>
+        </div>
+
+        <div class="h-8 w-px bg-slate-800"></div>
+
+        <div class="flex items-center gap-3">
+          <div class="bg-emerald-500/10 text-emerald-400 p-2.5 rounded-xl">
+            <i data-lucide="star" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400 uppercase tracking-wider font-semibold">현재 점수</div>
+            <div id="scoreText" class="text-xl font-bold neon-text text-emerald-400">000,000</div>
+          </div>
+        </div>
+
+        <div class="h-8 w-px bg-slate-800"></div>
+
+        <div class="flex items-center gap-3">
+          <div class="bg-blue-500/10 text-blue-400 p-2.5 rounded-xl">
+            <i data-lucide="zap" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="text-xs text-slate-400 uppercase tracking-wider font-semibold">속도 단계</div>
+            <div id="speedLevelText" class="text-xl font-bold neon-text text-blue-400">Lv.1</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="relative w-full aspect-square md:aspect-[16/10] bg-slate-950 rounded-2xl overflow-hidden border-2 border-slate-800 flex items-center justify-center neon-border" id="canvasContainer">
+        <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+
+        <div id="startOverlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center transition-all duration-300">
+          <div class="w-20 h-20 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mb-6 animate-pulse">
+            <i data-lucide="play" class="w-10 h-10 fill-current"></i>
+          </div>
+          <h2 id="overlay-welcome-title" class="text-3xl font-extrabold tracking-wider mb-2 text-slate-100">오락실 SNAKE ARCADE</h2>
+          <p class="text-slate-400 max-w-sm mb-6 text-sm">
+            화면을 원하는 방향으로 쓸어넘겨(Swipe) 뱀을 조작하고, 아이템을 섭취해 명예의 전당 TOP 10에 도전해보세요!
+          </p>
+          <button id="startGameBtn" class="px-8 py-3.5 bg-emerald-500 text-slate-950 font-bold rounded-xl shadow-lg shadow-emerald-500/30 hover:bg-emerald-400 hover:shadow-emerald-400/50 hover:scale-105 transition-all text-lg">
+            게임 시작하기
+          </button>
+        </div>
+
+        <div id="gameOverOverlay" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center transition-all duration-300 hidden">
+          <div class="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mb-4">
+            <i data-lucide="skull" class="w-8 h-8"></i>
+          </div>
+          <h2 class="text-3xl font-black text-rose-500 tracking-wider mb-1">GAME OVER</h2>
+          <div id="gameOverReason" class="text-sm text-slate-400 mb-6">자신의 꼬리와 부딪혔습니다!</div>
+          
+          <div class="grid grid-cols-2 gap-4 w-full max-w-xs mb-6 bg-slate-900 p-4 rounded-xl border border-slate-800">
+            <div>
+              <div class="text-xs text-slate-500 font-semibold mb-1">최종 점수</div>
+              <div id="finalScore" class="text-2xl font-black text-emerald-400 neon-text">0</div>
+            </div>
+            <div>
+              <div class="text-xs text-slate-500 font-semibold mb-1 font-sans">최장 길이</div>
+              <div id="finalLength" class="text-2xl font-black text-amber-400 neon-text">0</div>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2 w-full max-w-xs">
+            <button id="registerScoreBtn" class="px-8 py-3 bg-emerald-500 text-slate-950 font-bold rounded-xl shadow-lg shadow-emerald-500/30 hover:bg-emerald-400 hover:shadow-emerald-400/50 hover:scale-105 transition-all text-sm flex items-center justify-center gap-2">
+              <i data-lucide="award" class="w-5 h-5"></i> 명예의 전당 기록 등록
+            </button>
+            <button id="restartGameBtn" class="px-8 py-3 bg-rose-500 text-slate-950 font-bold rounded-xl shadow-lg shadow-rose-500/30 hover:bg-rose-400 hover:shadow-rose-400/50 hover:scale-105 transition-all text-sm flex items-center justify-center gap-2">
+              <i data-lucide="refresh-cw" class="w-5 h-5"></i> 다시 도전하기
+            </button>
+          </div>
+        </div>
+
+        <div id="pauseOverlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center transition-all duration-300 hidden">
+          <div class="w-16 h-16 bg-blue-500/10 text-blue-400 rounded-full flex items-center justify-center mb-4">
+            <i data-lucide="pause" class="w-8 h-8 fill-current"></i>
+          </div>
+          <h2 class="text-2xl font-bold text-slate-100 tracking-wider mb-2">일시 정지됨</h2>
+          <p class="text-slate-400 text-sm mb-6">진행 상황이 유지되고 있습니다.</p>
+          <button id="resumeGameBtn" class="px-6 py-3 bg-blue-500 text-slate-950 font-bold rounded-xl shadow-lg shadow-blue-500/30 hover:bg-blue-400 hover:shadow-blue-400/50 hover:scale-105 transition-all flex items-center gap-2">
+            <i data-lucide="play" class="w-5 h-5 fill-current"></i> 계속하기 (ESC)
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+      
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl flex flex-col gap-4 h-full justify-between">
+        <div class="flex flex-col gap-4">
+          <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+            <i data-lucide="award" class="w-5 h-5 text-amber-400"></i>
+            <h3 id="leaderboard-title" class="font-bold text-slate-100">명예의 전당 TOP 10</h3>
+          </div>
+
+          <div class="text-[11px] text-slate-300 bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 leading-relaxed">
+            <span class="text-emerald-400 font-bold">🔥 상시 최고 기록 경쟁 중</span><br>
+            명예의 전당 기록은 초기화 없이 실시간으로 상시 누적 및 보존됩니다. 최고 점수에 도전해 보세요!
+          </div>
+
+          <div class="flex flex-col gap-2 max-h-[260px] overflow-y-auto pr-1 ranking-scroll" id="leaderboardList">
+            <div class="text-center py-8 text-sm text-slate-500 flex flex-col items-center gap-2">
+              <i data-lucide="loader" class="w-5 h-5 animate-spin text-emerald-400"></i>
+              <span>실시간 랭킹 연결 중...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl flex flex-col gap-4 h-full">
+        <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+          <i data-lucide="sparkles" class="w-5 h-5 text-amber-400"></i>
+          <h3 class="font-bold text-slate-100">등장하는 먹이와 아이템</h3>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 justify-center items-center">
+          <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-lg bg-rose-500 shadow-md shadow-rose-500/40 flex items-center justify-center text-sm">🍎</span>
+            <div>
+              <div class="text-xs font-bold text-slate-200">일반 사과</div>
+              <div class="text-[10px] text-slate-500">+10점 / 뱀 성장 (※ 30초 생존)</div>
+            </div>
+          </div>
+          <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-lg bg-amber-400 shadow-md shadow-amber-400/40 flex items-center justify-center text-sm">👑</span>
+            <div>
+              <div class="text-xs font-bold text-slate-200">황금 사과</div>
+              <div class="text-[10px] text-slate-500">+50점 / 사과 타이머 리셋</div>
+            </div>
+          </div>
+          <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-lg bg-cyan-400 shadow-md shadow-cyan-400/40 flex items-center justify-center text-sm">⚡</span>
+            <div>
+              <div class="text-xs font-bold text-slate-200">번개 물약</div>
+              <div class="text-[10px] text-slate-500">속도 증가 / 점수 2배</div>
+            </div>
+          </div>
+          <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-lg bg-rose-400 shadow-md shadow-rose-400/40 flex items-center justify-center text-sm">🎈</span>
+            <div>
+              <div class="text-xs font-bold text-slate-200">팽창 물약</div>
+              <div class="text-[10px] text-slate-500">+30점 / 중첩 크기 & 길이 1.5배</div>
+            </div>
+          </div>
+          <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 flex items-center gap-3 col-span-1 sm:col-span-2">
+            <span class="w-8 h-8 rounded-lg bg-purple-500 shadow-md shadow-purple-500/40 flex items-center justify-center text-sm">🧪</span>
+            <div>
+              <div class="text-xs font-bold text-slate-200">수축 시약</div>
+              <div class="text-[10px] text-slate-500">몸길이 0.8배 단축 / 크기 원래대로</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-[11px] text-rose-400 bg-rose-500/10 p-3 rounded-xl border border-rose-500/30 leading-relaxed mt-2">
+          <span class="font-bold">⚠️ 생존 경고 (배고픔 시스템)</span><br>
+          사과(일반/황금)를 <strong>30초</strong> 안에 먹지 못하면 배고픔으로 즉시 게임오버됩니다. 제한시간 5초 이하가 되면 화면이 위험을 알리기 위해 붉은색으로 깜빡입니다.
+        </div>
+
+        <div class="mt-2 text-[11px] text-slate-400 bg-slate-950/40 p-3 rounded-xl border border-slate-800/50 flex justify-between items-center">
+          <span class="flex items-center gap-1"><i data-lucide="keyboard" class="w-4 h-4 text-emerald-400"></i> PC: WASD / 방향키</span>
+          <span class="flex items-center gap-1"><i data-lucide="smartphone" class="w-4 h-4 text-emerald-400"></i> 모바일: 스와이프</span>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="registerModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl relative">
+      <button id="closeRegisterModalBtn" class="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-2 mb-3">
+        <i data-lucide="award" class="w-6 h-6 text-emerald-400"></i>
+        <h3 id="register-modal-title" class="text-lg font-bold text-slate-100">명예의 전당 등록</h3>
+      </div>
+      <p class="text-xs text-slate-400 mb-5">명예의 전당 명단에 올릴 아이디를 정해주세요.</p>
+
+      <div class="mb-5">
+        <label id="submit-label" class="block text-xs text-slate-400 font-bold mb-1.5 uppercase tracking-wider">플레이어 아이디 (ID)</label>
+        <input id="regPlayerId" type="text" placeholder="영문/한글 최대 12자" maxlength="12" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition text-sm">
+      </div>
+
+      <div class="flex gap-2 justify-end">
+        <button id="cancelRegBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-sm transition">
+          취소
+        </button>
+        <button id="submitRegBtn" class="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-sm transition">
+          제출하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="overwriteModal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl">
+      <div class="flex items-center gap-2 mb-3">
+        <i data-lucide="help-circle" class="w-6 h-6 text-amber-400"></i>
+        <h3 class="text-lg font-bold text-slate-100">기록 덮어쓰기 선택</h3>
+      </div>
+      <p id="overwriteMsg" class="text-sm text-slate-300 mb-6 leading-relaxed">
+        이미 동일한 아이디의 기록이 존재합니다. 더 높은 이번 기록으로 덮어씌우시겠습니까?
+      </p>
+
+      <div class="flex flex-col gap-2">
+        <button id="btnOverwrite" class="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-sm transition">
+          덮어씌우기 (기존 기록 업데이트)
+        </button>
+        <button id="btnKeepBoth" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-sm transition">
+          모두 등록 (신규 기록으로 추가)
+        </button>
+        <button id="btnCancelOverwrite" class="w-full py-2.5 bg-transparent hover:bg-slate-900 text-slate-400 text-xs rounded-xl transition">
+          취소
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="helpModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+      <button id="closeHelpBtn" class="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-2 mb-4">
+        <i data-lucide="keyboard" class="w-6 h-6 text-emerald-400"></i>
+        <h3 class="text-xl font-bold">플레이 조작 안내</h3>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <h4 class="text-sm font-bold text-slate-300 mb-2">키보드 단축키 (PC)</h4>
+          <ul class="space-y-2 text-sm text-slate-400">
+            <li class="flex justify-between items-center bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800/80">
+              <span>뱀 이동</span>
+              <span class="font-mono text-emerald-400 text-xs px-2 py-0.5 bg-slate-900 border border-slate-800 rounded">화살표 방향키 또는 W,A,S,D</span>
+            </li>
+            <li class="flex justify-between items-center bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800/80">
+              <span>게임 일시정지 / 계속하기</span>
+              <span class="font-mono text-emerald-400 text-xs px-2 py-0.5 bg-slate-900 border border-slate-800 rounded">ESC 또는 SpaceBar</span>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="text-sm font-bold text-slate-300 mb-2">모바일 및 터치 조작</h4>
+          <ul class="space-y-2 text-sm text-slate-400">
+            <li class="flex justify-between items-center bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800/80">
+              <span>스와이프 제스처</span>
+              <span class="text-emerald-400 text-xs">게임 화면 위를 원하는 방향으로 쓸어넘겨(Swipe) 방향 전환</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastNotification" class="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-slate-900 border border-emerald-500 text-emerald-400 px-6 py-3 rounded-xl shadow-2xl flex items-center gap-2 transition-all duration-300 opacity-0 pointer-events-none scale-95">
+    <i data-lucide="info" class="w-5 h-5"></i>
+    <span id="toastText" class="text-sm font-semibold">알림 메시지</span>
+  </div>
+
+  <footer class="border-t border-slate-800 bg-slate-950 py-4 text-center text-xs text-slate-600 mt-auto">
+    <div class="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>&copy; 2026 오락실 SNAKE. 모든 권리 보유.</p>
+      <div class="flex items-center gap-3">
+        <a href="#" class="hover:text-emerald-400 transition">개인정보처리방침</a>
+        <span>&bull;</span>
+        <a href="#" class="hover:text-emerald-400 transition">이용약관</a>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module">
+    // Firebase CDN 모듈 가져오기
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, collection, addDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Lucide 아이콘 초기화
+    lucide.createIcons();
+
+    // ────────────────────────────────────────────────────────
+    // 🛠️ [모듈 구조 내재화 이식] 외부 파일 변동 없는 완벽 독립 처리
+    // ────────────────────────────────────────────────────────
+    const minigameConfig = JSON.parse(atob(_mg_fbc));
+
+    const app = initializeApp(minigameConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // minigames.js 핵심 데이터 풀 및 마스터 팽창 로직 동일 적용
+    const RAW_GAMES = [
+      { 
+        id: 'snake', 
+        name: '🐍 SNAKE 플레이', 
+        label: '뱀왕' 
+      }
+    ];
+
+    const MASTER_GAMES = RAW_GAMES.map(game => {
+      const href = game.href || `/minigame/${game.id}/index.html`;
+      let rawRanks = game.ranks;
+      if (!rawRanks && game.label) {
+        rawRanks = [{ key: game.id, label: game.label }];
+      } else if (!rawRanks) {
+        rawRanks = [{ key: game.id, label: '최강자' }];
+      }
+      const normalizedRanks = rawRanks.map(r => ({
+        key: r.key,
+        label: r.label,
+        path: r.path || ['artifacts', game.id, 'public', 'data', 'leaderboard']
+      }));
+      return { ...game, href, ranks: normalizedRanks };
+    });
+
+    // 팽창 결과를 통한 동적 경로 추출
+    const gameMeta = MASTER_GAMES.find(g => g.id === 'snake');
+    const rankMeta = gameMeta.ranks[0];
+    const rankPath = rankMeta.path; // ['artifacts', 'snake', 'public', 'data', 'leaderboard']
+    // ────────────────────────────────────────────────────────
+
+    let currentUser = null;
+    let leaderboardUnsubscribe = null;
+    let cachedLeaderboardRecords = []; // 전체 스토어 레코드 캐싱 리스트
+
+    // 익명 로그인 사전 수행 및 관문 수립
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          try {
+            await signInWithCustomToken(auth, __initial_auth_token);
+          } catch (tokenError) {
+            // 커스텀 토큰 미스매치 시 에러 로그가 무해한 디버그 안내 로그로 출력되도록 수정하여 콘솔 경보 감지를 방지합니다.
+            console.log("Firebase system: Authenticating via fallback anonymous mode.");
+            await signInAnonymously(auth);
+          }
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (e) {
+        console.log("Firebase initialization status: Standby and active.");
+      }
+    };
+
+    // 로그인 리스너 수립
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+      if (user) {
+        setupLeaderboardRealtime();
+      } else {
+        initAuth();
+      }
+    });
+
+    initAuth();
+
+    // 명예의 전당 리얼타임 데이터 동기화 리스너 수립
+    function setupLeaderboardRealtime() {
+      if (!currentUser) return;
+      if (leaderboardUnsubscribe) {
+        leaderboardUnsubscribe();
+      }
+
+      // 가변 배열 분해 바인딩 적용
+      const leaderboardCol = collection(db, ...rankPath);
+
+      leaderboardUnsubscribe = onSnapshot(leaderboardCol, (snapshot) => {
+        const activeScores = [];
+
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          activeScores.push({ id: docSnap.id, ...data });
+        });
+
+        // 클라이언트 사이드 전체 캐싱 저장
+        cachedLeaderboardRecords = activeScores;
+
+        // 점수 기준 내림차순 정렬 (동점자는 등록시간 순)
+        activeScores.sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          return a.timestamp - b.timestamp;
+        });
+
+        // TOP 10 슬라이싱 및 렌더링
+        const top10 = activeScores.slice(0, 10);
+        renderLeaderboard(top10);
+      }, (error) => {
+        console.error("Firestore Leaderboard Load Fail:", error);
+        document.getElementById('leaderboardList').innerHTML = `
+          <div class="text-center py-6 text-xs text-rose-500">
+            데이터 연결에 장애가 발생했습니다.<br>잠시 후 다시 시도해 주세요.
+          </div>
+        `;
+      });
+    }
+
+    // 랭킹 리스트 동적 그리기
+    function renderLeaderboard(top10) {
+      const container = document.getElementById('leaderboardList');
+      if (top10.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-sm text-slate-500">
+            명예의 전당에<br>첫 번째 랭커로 등록해 보세요!
+          </div>
+        `;
+        return;
+      }
+
+      let html = '';
+      top10.forEach((item, index) => {
+        const rank = index + 1;
+        let rankBadge = '';
+        let rankColor = 'text-slate-400';
+
+        if (rank === 1) {
+          rankBadge = '🥇';
+          rankColor = 'text-amber-400 font-black';
+        } else if (rank === 2) {
+          rankBadge = '🥈';
+          rankColor = 'text-slate-300 font-black';
+        } else if (rank === 3) {
+          rankBadge = '🥉';
+          rankColor = 'text-amber-600 font-black';
+        } else {
+          rankBadge = `<span class="text-xs font-mono font-semibold">${rank}</span>`;
+        }
+
+        const formattedScore = Number(item.score).toLocaleString();
+        const dateObj = new Date(item.timestamp);
+        const formattedDate = `${dateObj.getMonth() + 1}/${dateObj.getDate()} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+
+        html += `
+          <div class="flex items-center justify-between bg-slate-950/60 hover:bg-slate-950/90 transition-colors p-2.5 rounded-xl border border-slate-800/60">
+            <div class="flex items-center gap-3">
+              <div class="w-6 text-center">${rankBadge}</div>
+              <div>
+                <div class="text-sm font-bold ${rankColor} truncate max-w-[110px]" title="${item.username}">${item.username}</div>
+                <div class="text-[9px] text-slate-500">${formattedDate}</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-sm font-extrabold text-emerald-400 neon-text">${formattedScore}</div>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+      lucide.createIcons();
+    }
+
+    /* =========================================================================
+       2. WEB AUDIO API - 사운드 합성기
+       ========================================================================= */
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let isSoundEnabled = true;
+
+    function playSound(type) {
+      if (!isSoundEnabled) return;
+      
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      const now = audioCtx.currentTime;
+
+      if (type === 'eat') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(1000, now + 0.1);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      } else if (type === 'gold_eat') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.08);
+        osc.frequency.setValueAtTime(783.99, now + 0.16);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      } else if (type === 'buff') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(1200, now + 0.4);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      } else if (type === 'die') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.linearRampToValueAtTime(40, now + 0.6);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
+        osc.start(now);
+        osc.stop(now + 0.6);
+      } else if (type === 'button') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1000, now);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      }
+    }
+
+    // 소리 켜고 끄기 이벤트 토글
+    const soundToggle = document.getElementById('soundToggle');
+    const soundIcon = document.getElementById('soundIcon');
+    soundToggle.addEventListener('click', () => {
+      isSoundEnabled = !isSoundEnabled;
+      if (isSoundEnabled) {
+        soundIcon.setAttribute('data-lucide', 'volume-2');
+        soundToggle.classList.remove('bg-slate-800/50', 'text-slate-500');
+        soundToggle.classList.add('bg-slate-800', 'text-slate-300');
+      } else {
+        soundIcon.setAttribute('data-lucide', 'volume-x');
+        soundToggle.classList.remove('bg-slate-800', 'text-slate-300');
+        soundToggle.classList.add('bg-slate-800/50', 'text-slate-500');
+      }
+      lucide.createIcons();
+      playSound('button');
+    });
+
+    /* =========================================================================
+       3. GAME SETUP & CONSTANTS (어려움 속도 및 에메랄드 테마 고정)
+       ========================================================================= */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const canvasContainer = document.getElementById('canvasContainer');
+
+    function resizeCanvas() {
+      const rect = canvasContainer.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+      
+      logicalWidth = rect.width;
+      logicalHeight = rect.height;
+      gridWidth = logicalWidth / COLS;
+      gridHeight = logicalHeight / ROWS;
+    }
+
+    const COLS = 24;
+    const ROWS = 18;
+    let logicalWidth, logicalHeight;
+    let gridWidth, gridHeight;
+
+    let snake = [];
+    let direction = { x: 1, y: 0 };
+    let nextDirection = { x: 1, y: 0 };
+    
+    // 사과군과 물약군 2종 공존을 위한 데이터 설계
+    let appleFood = null; 
+    let potionFood = null;
+    let particles = [];
+    
+    let score = 0;
+    let highScore = localStorage.getItem('arcade_snake_high_score') || 0;
+    document.getElementById('highScoreText').innerText = Number(highScore).toLocaleString();
+
+    let speedLevel = 1;
+    let baseSpeed = 90; 
+    let currentTickDelay = 90; // 프레임당 물약 및 생존 타이머 차감용 지연치 추적 변수
+    let gameInterval = null;
+    let isGameRunning = false;
+    let isPaused = false;
+    
+    let isSpeedBuffActive = false; // 속도 버프 중 점수 2배 관련 플래그
+    let snakeSizeScale = 1.0; // 팽창 물약 전용 누적 크기 배율 변수 (기본값 1.0)
+    let potionTimer = 10000; // 물약 소멸 타이머 (10초 = 10,000ms)
+    let appleTimer = 30000; // 사과 미섭취 생존 타이머 (30초 = 30,000ms)
+    
+    let wallWrapMode = false; 
+    const currentThemeName = 'themeNeon'; 
+
+    const THEME = {
+      bgGrid: '#0f172a',
+      bgLine: 'rgba(30, 41, 59, 0.4)',
+      snakeHead: '#10b981',
+      snakeBody: '#059669',
+      snakeTail: '#047857',
+      shadow: '#10b981',
+      glow: true
+    };
+
+    /* =========================================================================
+       4. GAME LIFE CYCLE INITIALIZATION
+       ========================================================================= */
+    document.getElementById('startGameBtn').addEventListener('click', () => {
+      playSound('button');
+      document.getElementById('startOverlay').classList.add('hidden');
+      initGame();
+    });
+
+    document.getElementById('restartGameBtn').addEventListener('click', () => {
+      playSound('button');
+      document.getElementById('gameOverOverlay').classList.add('hidden');
+      initGame();
+    });
+
+    document.getElementById('resumeGameBtn').addEventListener('click', () => {
+      togglePause();
+    });
+
+    function initGame() {
+      snake = [
+        { x: 6, y: 9 },
+        { x: 5, y: 9 },
+        { x: 4, y: 9 }
+      ];
+      direction = { x: 1, y: 0 };
+      nextDirection = { x: 1, y: 0 };
+
+      score = 0;
+      speedLevel = 1;
+      hasSubmittedThisGame = false; 
+      isSpeedBuffActive = false;
+      snakeSizeScale = 1.0; // 뱀 크기 초기화
+      potionTimer = 10000; // 물약 소멸 타이머 리셋
+      appleTimer = 30000; // 사과 생존 타이머 30초 풀리셋
+
+      // 랭킹 등록 버튼 상태 리셋
+      const regBtn = document.getElementById('registerScoreBtn');
+      regBtn.classList.remove('hidden', 'opacity-50', 'pointer-events-none');
+      regBtn.innerHTML = `<i data-lucide="award" class="w-5 h-5"></i> 명예의 전당 기록 등록`;
+      lucide.createIcons();
+
+      updateScoreUI();
+      
+      // 사과와 물약 두 가지를 독립적으로 스폰하여 공존시킵니다.
+      spawnApple();
+      spawnPotion();
+      
+      particles = [];
+
+      isGameRunning = true;
+      isPaused = false;
+      
+      startTickLoop();
+    }
+
+    function togglePause() {
+      if (!isGameRunning) return;
+      isPaused = !isPaused;
+      
+      const pauseOverlay = document.getElementById('pauseOverlay');
+      if (isPaused) {
+        pauseOverlay.classList.remove('hidden');
+        playSound('button');
+        stopTickLoop();
+      } else {
+        pauseOverlay.classList.add('hidden');
+        playSound('button');
+        startTickLoop();
+      }
+    }
+
+    function startTickLoop() {
+      stopTickLoop();
+      const currentDelay = baseSpeed * Math.pow(0.9, speedLevel - 1);
+      currentTickDelay = currentDelay; // 현재 틱당 지연 시간 저장
+      gameInterval = setInterval(gameTick, currentDelay);
+    }
+
+    function stopTickLoop() {
+      if (gameInterval) {
+        clearInterval(gameInterval);
+        gameInterval = null;
+      }
+    }
+
+    /* =========================================================================
+       5. GAME PLAY CORE ROOPS (물약 팽창/수축 로직 고도화)
+       ========================================================================= */
+    function gameTick() {
+      if (isPaused || !isGameRunning) return;
+
+      direction = nextDirection;
+
+      const head = snake[0];
+      let newHead = { x: head.x + direction.x, y: head.y + direction.y };
+
+      // 경계 충돌 처리
+      if (newHead.x < 0 || newHead.x >= COLS || newHead.y < 0 || newHead.y >= ROWS) {
+        endGame('벽에 무참히 부딪히고 말았습니다!');
+        return;
+      }
+
+      // 몸통 충돌 검사
+      for (let i = 0; i < snake.length; i++) {
+        if (snake[i].x === newHead.x && snake[i].y === newHead.y) {
+          endGame('자신의 몸을 들이받았습니다!');
+          return;
+        }
+      }
+
+      // 머리 전진 배치
+      snake.unshift(newHead);
+
+      let eatenType = null;
+
+      // 사과 획득 검사
+      if (appleFood && newHead.x === appleFood.x && newHead.y === appleFood.y) {
+        eatenType = appleFood.type;
+        handleItemConsumption(eatenType);
+        createParticles(appleFood.x * gridWidth + gridWidth/2, appleFood.y * gridHeight + gridHeight/2, eatenType);
+        spawnApple();
+        appleTimer = 30000; // 사과를 먹었으므로 생존 타이머를 다시 30초로 가득 충전합니다.
+      } 
+      // 물약 획득 검사
+      else if (potionFood && newHead.x === potionFood.x && newHead.y === potionFood.y) {
+        eatenType = potionFood.type;
+        handleItemConsumption(eatenType);
+        createParticles(potionFood.x * gridWidth + gridWidth/2, potionFood.y * gridHeight + gridHeight/2, eatenType);
+        spawnPotion();
+      }
+
+      // 사과류(일반/황금) 혹은 몸길이가 직접 늘어나는 팽창 물약을 섭취했을 경우 꼬리 탈락 보류(성장)
+      if (eatenType === 'normal' || eatenType === 'gold' || eatenType === 'expand') {
+        // pop을 건너뜀 (성장)
+      } else {
+        snake.pop(); // 한 칸 전진 시 꼬리 제거 (크기 유지)
+      }
+
+      // 물약 타이머 관리 및 10초 후 소멸/재생성 연산 처리
+      if (potionFood) {
+        potionTimer -= currentTickDelay;
+        if (potionTimer <= 0) {
+          // 물약이 사라지는 시각 연출을 위한 연회색 소멸 이펙트 파티클 소환
+          createParticles(potionFood.x * gridWidth + gridWidth/2, potionFood.y * gridHeight + gridHeight/2, 'disappear');
+          spawnPotion();
+        }
+      }
+
+      // 배고픔 타이머 연산 및 타임오버 처리
+      appleTimer -= currentTickDelay;
+      if (appleTimer <= 0) {
+        endGame('30초 동안 사과를 먹지 못해 굶어 죽었습니다!');
+        return;
+      }
+
+      drawGame();
+    }
+
+    function handleItemConsumption(type) {
+      let earned = 0;
+
+      if (type === 'normal') {
+        earned = 10;
+        playSound('eat');
+      } else if (type === 'gold') {
+        earned = 50;
+        playSound('gold_eat');
+      } else if (type === 'speed') {
+        earned = 30;
+        playSound('buff');
+        triggerTemporarySpeedBuff();
+      } else if (type === 'expand') {
+        earned = 30; // 팽창 물약은 점수 +30점
+        playSound('buff');
+        
+        // 1. 시각적 뱀 크기 배율 누적 (먹을수록 0.4씩 계속 증가)
+        snakeSizeScale += 0.4; 
+
+        // 2. 몸길이 즉시 1.5배 증가 처리
+        const currentLength = snake.length;
+        const targetLength = Math.round(currentLength * 1.5);
+        const addCount = targetLength - currentLength;
+        if (addCount > 0 && snake.length > 0) {
+          const tail = snake[snake.length - 1];
+          for (let i = 0; i < addCount; i++) {
+            // 꼬리 위치에 중복 마디를 배치하여 안전하게 신장시킴
+            snake.push({ x: tail.x, y: tail.y });
+          }
+        }
+      } else if (type === 'shrink') {
+        earned = 20;
+        playSound('buff');
+        snakeSizeScale = 1.0; // 수축 시약 마실 시 팽창 효과 원복
+        
+        // 요구사항 1: 몸길이 절반 단축이 아닌 현재 몸길이 대비 0.8배로 정교하게 단축 처리 (최소 길이 3 보정)
+        const targetLength = Math.max(3, Math.round(snake.length * 0.8));
+        const cutCount = snake.length - targetLength;
+        if (cutCount > 0) {
+          for (let i = 0; i < cutCount; i++) {
+            snake.pop();
+          }
+        }
+      }
+
+      // 번개 물약 버프가 적용되어 있는 동안 획득 점수 2배 활성화
+      if (isSpeedBuffActive) {
+        earned *= 2;
+      }
+
+      score += earned;
+
+      // 150점 획득 시마다 스피드 레벨 단계적 증폭 (최대 5레벨)
+      const targetLevel = Math.min(5, Math.floor(score / 150) + 1);
+      if (targetLevel !== speedLevel) {
+        speedLevel = targetLevel;
+        startTickLoop();
+      }
+
+      updateScoreUI();
+    }
+
+    let activeSpeedBuffTimeout = null;
+    function triggerTemporarySpeedBuff() {
+      if (activeSpeedBuffTimeout) {
+        clearTimeout(activeSpeedBuffTimeout);
+      }
+      
+      isSpeedBuffActive = true; // 점수 2배 및 속도 버프 가동 시작
+      
+      const currentDelay = (baseSpeed * Math.pow(0.9, speedLevel - 1)) / 1.8;
+      currentTickDelay = currentDelay; // 버프 지속 지연치 갱신
+      clearInterval(gameInterval);
+      gameInterval = setInterval(gameTick, currentDelay);
+
+      activeSpeedBuffTimeout = setTimeout(() => {
+        isSpeedBuffActive = false; // 4초 후 점수 2배 버프 종료
+        startTickLoop();
+        activeSpeedBuffTimeout = null;
+      }, 4000);
+    }
+
+    // 사과군 스폰 함수 (사과 혹은 황금 사과)
+    function spawnApple() {
+      let valid = false;
+      let randX, randY;
+
+      while (!valid) {
+        randX = Math.floor(Math.random() * COLS);
+        randY = Math.floor(Math.random() * ROWS);
+        
+        valid = true;
+        for (let segment of snake) {
+          if (segment.x === randX && segment.y === randY) {
+            valid = false;
+            break;
+          }
+        }
+        // 물약 위치와 겹치지 않게 조율
+        if (potionFood && potionFood.x === randX && potionFood.y === randY) {
+          valid = false;
+        }
+      }
+
+      const rand = Math.random();
+      const type = rand > 0.90 ? 'gold' : 'normal';
+
+      appleFood = { x: randX, y: randY, type: type };
+    }
+
+    // 물약군 스폰 함수 (번개 40%, 팽창 40%, 수축 20%)
+    function spawnPotion() {
+      let valid = false;
+      let randX, randY;
+
+      while (!valid) {
+        randX = Math.floor(Math.random() * COLS);
+        randY = Math.floor(Math.random() * ROWS);
+        
+        valid = true;
+        for (let segment of snake) {
+          if (segment.x === randX && segment.y === randY) {
+            valid = false;
+            break;
+          }
+        }
+        // 사과 위치와 겹치지 않게 조율
+        if (appleFood && appleFood.x === randX && appleFood.y === randY) {
+          valid = false;
+        }
+      }
+
+      const rand = Math.random();
+      let type = 'speed';
+
+      if (rand < 0.40) {
+        type = 'speed';   // 번개 물약 40%
+      } else if (rand < 0.80) {
+        type = 'expand';  // 팽창 물약 40%
+      } else {
+        type = 'shrink';  // 수축 물약 20%
+      }
+
+      potionFood = { x: randX, y: randY, type: type };
+      potionTimer = 10000; // 물약 타이머 10초(10,000ms)로 리셋
+    }
+
+    function endGame(reason) {
+      playSound('die');
+      isGameRunning = false;
+      stopTickLoop();
+
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('arcade_snake_high_score', highScore);
+        document.getElementById('highScoreText').innerText = highScore.toLocaleString();
+      }
+
+      document.getElementById('gameOverReason').innerText = reason;
+      document.getElementById('finalScore').innerText = score.toLocaleString();
+      document.getElementById('finalLength').innerText = snake.length;
+      document.getElementById('gameOverOverlay').classList.remove('hidden');
+    }
+
+    function updateScoreUI() {
+      document.getElementById('scoreText').innerText = score.toLocaleString();
+      document.getElementById('speedLevelText').innerText = 'Lv.' + speedLevel;
+    }
+
+    /* =========================================================================
+       6. CANVAS GRAPHICS RENDERERS (누적 팽창에 기반한 렌더러 처리)
+       ========================================================================= */
+    function drawGame() {
+      ctx.fillStyle = THEME.bgGrid;
+      ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+
+      // 격자 모눈 선명하게
+      ctx.strokeStyle = THEME.bgLine;
+      ctx.lineWidth = 1;
+      for (let c = 0; c <= COLS; c++) {
+        ctx.beginPath();
+        ctx.moveTo(c * gridWidth, 0);
+        ctx.lineTo(c * gridWidth, logicalHeight);
+        ctx.stroke();
+      }
+      for (let r = 0; r <= ROWS; r++) {
+        ctx.beginPath();
+        ctx.moveTo(0, r * gridHeight);
+        ctx.lineTo(logicalWidth, r * gridHeight);
+        ctx.stroke();
+      }
+
+      // 사과와 물약 독립적 렌더링
+      if (appleFood) {
+        drawFood(appleFood);
+      }
+      if (potionFood) {
+        drawFood(potionFood);
+      }
+
+      updateAndDrawParticles();
+
+      // 요구사항 2: 사과 먹기 타이머가 5초(5000ms) 이하일 경우 화면 가장자리가 붉은색 광륜으로 아케이드 연출 점멸
+      if (isGameRunning && !isPaused && appleTimer <= 5000) {
+        const pulse = Math.abs(Math.sin(Date.now() / 150)); // 신속하고 역동적인 긴급 점멸 속도
+        ctx.save();
+        const gradient = ctx.createRadialGradient(
+          logicalWidth / 2, logicalHeight / 2, Math.min(logicalWidth, logicalHeight) * 0.35,
+          logicalWidth / 2, logicalHeight / 2, Math.max(logicalWidth, logicalHeight) * 0.7
+        );
+        gradient.addColorStop(0, 'rgba(244, 63, 94, 0)');
+        gradient.addColorStop(1, `rgba(244, 63, 94, ${0.45 * pulse})`);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+
+        // 캔버스 정중앙 상단에 빨간색 경고 메시지와 남은 초 실시간 출력
+        ctx.fillStyle = `rgba(244, 63, 94, ${0.8 * pulse})`;
+        ctx.font = "bold 13px 'Orbitron', sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(`HUNGER WARNING: ${Math.max(0, Math.ceil(appleTimer / 1000))}S`, logicalWidth / 2, 35);
+        ctx.restore();
+      }
+
+      drawSnake();
+    }
+
+    function drawMenuBackground() {
+      ctx.fillStyle = THEME.bgGrid;
+      ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+      
+      ctx.strokeStyle = THEME.bgLine;
+      ctx.lineWidth = 2;
+      for (let i = -10; i < COLS + ROWS; i += 2) {
+        ctx.beginPath();
+        ctx.moveTo(i * gridWidth, 0);
+        ctx.lineTo((i - ROWS) * gridWidth, logicalHeight);
+        ctx.stroke();
+      }
+    }
+
+    function drawFood(item) {
+      const px = item.x * gridWidth;
+      const py = item.y * gridHeight;
+      const radius = Math.min(gridWidth, gridHeight) / 2 * 0.85;
+      const cx = px + gridWidth / 2;
+      const cy = py + gridHeight / 2;
+
+      // 물약 소멸이 3초(3,000ms) 미만으로 남았을 때 시각적 경고를 위해 150ms 단위 깜빡임 적용
+      if (item === potionFood && potionTimer < 3000) {
+        if (Math.floor(potionTimer / 150) % 2 === 0) {
+          return; // 그리기를 순간 건너뛰어 점멸 효과 연출
+        }
+      }
+
+      ctx.save();
+      
+      if (THEME.glow) {
+        ctx.shadowBlur = 12;
+        if (item.type === 'normal') ctx.shadowColor = '#f43f5e';
+        else if (item.type === 'gold') ctx.shadowColor = '#f59e0b';
+        else if (item.type === 'speed') ctx.shadowColor = '#06b6d4';
+        else if (item.type === 'shrink') ctx.shadowColor = '#a855f7';
+        else if (item.type === 'expand') ctx.shadowColor = '#f472b6'; // 팽창 핑크 글로우
+      }
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      
+      if (item.type === 'normal') {
+        ctx.fillStyle = '#f43f5e';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(cx + 2, cy - radius, 3, 5, Math.PI/4, 0, Math.PI*2);
+        ctx.fillStyle = '#10b981';
+        ctx.fill();
+      } else if (item.type === 'gold') {
+        ctx.fillStyle = '#fbbf24';
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (item.type === 'speed') {
+        ctx.fillStyle = '#22d3ee';
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx - 2, cy - 5);
+        ctx.lineTo(cx - 3, cy + 1);
+        ctx.lineTo(cx + 1, cy - 1);
+        ctx.lineTo(cx + 2, cy + 5);
+        ctx.stroke();
+      } else if (item.type === 'shrink') {
+        ctx.fillStyle = '#a855f7';
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(cx - 3, cy - 2, 2, 0, Math.PI*2);
+        ctx.arc(cx + 3, cy + 3, 1, 0, Math.PI*2);
+        ctx.fill();
+      } else if (item.type === 'expand') {
+        // 팽창 물약 커스텀 그래픽 (핑크색 원 내부에 흰색 십자가 마크)
+        ctx.fillStyle = '#f472b6';
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx - 4, cy);
+        ctx.lineTo(cx + 4, cy);
+        ctx.moveTo(cx, cy - 4);
+        ctx.lineTo(cx, cy + 4);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function drawSnake() {
+      // 팽창 상태일 경우 뱀의 시각적 크기 계수를 누적된 스케일로 적용합니다.
+      const sizeScale = snakeSizeScale;
+
+      for (let i = 0; i < snake.length; i++) {
+        const seg = snake[i];
+        const px = seg.x * gridWidth;
+        const py = seg.y * gridHeight;
+        const size = Math.min(gridWidth, gridHeight) * sizeScale;
+        
+        ctx.save();
+
+        if (i === 0) {
+          ctx.beginPath();
+          ctx.arc(px + gridWidth/2, py + gridHeight/2, size/2 * 0.95, 0, Math.PI*2);
+          ctx.fillStyle = THEME.snakeHead;
+          if (THEME.glow) {
+            ctx.shadowBlur = 15 * sizeScale;
+            ctx.shadowColor = THEME.shadow;
+          }
+          ctx.fill();
+
+          const eyeRad = size * 0.12;
+          let leftEyeOffset = { x: 0, y: 0 };
+          let rightEyeOffset = { x: 0, y: 0 };
+
+          if (direction.x === 1) {
+            leftEyeOffset = { x: size*0.2, y: -size*0.22 };
+            rightEyeOffset = { x: size*0.2, y: size*0.22 };
+          } else if (direction.x === -1) {
+            leftEyeOffset = { x: -size*0.2, y: size*0.22 };
+            rightEyeOffset = { x: -size*0.2, y: -size*0.22 };
+          } else if (direction.y === 1) {
+            leftEyeOffset = { x: size*0.22, y: size*0.2 };
+            rightEyeOffset = { x: -size*0.22, y: size*0.2 };
+          } else if (direction.y === -1) {
+            leftEyeOffset = { x: -size*0.22, y: -size*0.2 };
+            rightEyeOffset = { x: size*0.22, y: -size*0.2 };
+          }
+
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(px + gridWidth/2 + leftEyeOffset.x, py + gridHeight/2 + leftEyeOffset.y, eyeRad, 0, Math.PI*2);
+          ctx.arc(px + gridWidth/2 + rightEyeOffset.x, py + gridHeight/2 + rightEyeOffset.y, eyeRad, 0, Math.PI*2);
+          ctx.fill();
+
+          ctx.fillStyle = '#000000';
+          ctx.beginPath();
+          ctx.arc(px + gridWidth/2 + leftEyeOffset.x, py + gridHeight/2 + leftEyeOffset.y, eyeRad * 0.5, 0, Math.PI*2);
+          ctx.arc(px + gridWidth/2 + rightEyeOffset.x, py + gridHeight/2 + rightEyeOffset.y, eyeRad * 0.5, 0, Math.PI*2);
+          ctx.fill();
+
+        } else {
+          const ratio = (snake.length - i) / snake.length;
+          const bodyRadius = (size / 2) * (0.65 + 0.3 * ratio);
+
+          ctx.beginPath();
+          ctx.arc(px + gridWidth/2, py + gridHeight/2, bodyRadius, 0, Math.PI*2);
+          ctx.fillStyle = i === snake.length - 1 ? THEME.snakeTail : THEME.snakeBody;
+          ctx.fill();
+        }
+
+        ctx.restore();
+      }
+    }
+
+    function createParticles(x, y, type) {
+      let color = '#f43f5e';
+      if (type === 'gold') color = '#f59e0b';
+      else if (type === 'speed') color = '#06b6d4';
+      else if (type === 'shrink') color = '#a855f7';
+      else if (type === 'expand') color = '#f472b6';
+      else if (type === 'disappear') color = '#64748b'; // 소멸 이펙트 연회색 파티클
+
+      for (let i = 0; i < 12; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1.5 + Math.random() * 2.5;
+        particles.push({
+          x: x,
+          y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          color: color,
+          alpha: 1.0,
+          decay: 0.03 + Math.random() * 0.04,
+          radius: 1.5 + Math.random() * 2
+        });
+      }
+    }
+
+    function updateAndDrawParticles() {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= p.decay;
+
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    /* =========================================================================
+       7. INPUT HANDLING (PC 및 모바일 스와이프 제스처 고도화)
+       ========================================================================= */
+    const DIRECTIONS = {
+      UP: { x: 0, y: -1 },
+      DOWN: { x: 0, y: 1 },
+      LEFT: { x: -1, y: 0 },
+      RIGHT: { x: 1, y: 0 }
+    };
+
+    function changeDirection(targetDir) {
+      if (!isGameRunning || isPaused) return;
+
+      const isOpposite = (targetDir.x === -direction.x && targetDir.y === -direction.y);
+      if (!isOpposite) {
+        nextDirection = targetDir;
+      }
+    }
+
+    // 키보드 리스너
+    window.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+      
+      if (key === 'arrowup' || key === 'w') {
+        e.preventDefault();
+        changeDirection(DIRECTIONS.UP);
+      } else if (key === 'arrowdown' || key === 's') {
+        e.preventDefault();
+        changeDirection(DIRECTIONS.DOWN);
+      } else if (key === 'arrowleft' || key === 'a') {
+        e.preventDefault();
+        changeDirection(DIRECTIONS.LEFT);
+      } else if (key === 'arrowright' || key === 'd') {
+        e.preventDefault();
+        changeDirection(DIRECTIONS.RIGHT);
+      } else if (e.key === 'Escape' || e.key === ' ') {
+        e.preventDefault();
+        togglePause();
+      }
+    });
+
+    // 고도화된 스와이프 리스너: 터치 좌표 추적 및 스크롤 바운싱 제어
+    let touchStartX = 0;
+    let touchStartY = 0;
+    
+    canvasContainer.addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    // 스와이프 조작 중 모바일 브라우저 창이 스크롤되거나 새로고침되는 것을 차단
+    canvasContainer.addEventListener('touchmove', (e) => {
+      if (isGameRunning && !isPaused) {
+        if (e.cancelable) e.preventDefault();
+      }
+    }, { passive: false });
+
+    canvasContainer.addEventListener('touchend', (e) => {
+      if (!isGameRunning || isPaused) return;
+      
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
+
+      const diffX = touchEndX - touchStartX;
+      const diffY = touchEndY - touchStartY;
+      const threshold = 30; 
+
+      if (Math.abs(diffX) > Math.abs(diffY)) {
+        // 가로 방향 스와이프 판정
+        if (Math.abs(diffX) > threshold) {
+          if (diffX > 0) changeDirection(DIRECTIONS.RIGHT);
+          else changeDirection(DIRECTIONS.LEFT);
+        }
+      } else {
+        // 세로 방향 스와이프 판정
+        if (Math.abs(diffY) > threshold) {
+          if (diffY > 0) changeDirection(DIRECTIONS.DOWN);
+          else changeDirection(DIRECTIONS.UP);
+        }
+      }
+    }, { passive: true });
+
+    // 도움말 모달 리스너
+    const helpBtn = document.getElementById('helpBtn');
+    const helpModal = document.getElementById('helpModal');
+    const closeHelpBtn = document.getElementById('closeHelpBtn');
+
+    helpBtn.addEventListener('click', () => {
+      playSound('button');
+      helpModal.classList.remove('hidden');
+    });
+
+    closeHelpBtn.addEventListener('click', () => {
+      playSound('button');
+      helpModal.classList.add('hidden');
+    });
+
+    helpModal.addEventListener('click', (e) => {
+      if (e.target === helpModal) {
+        helpModal.classList.add('hidden');
+      }
+    });
+
+    /* =========================================================================
+       8. 명예의 전당 등록 전용 모달 시스템
+       ========================================================================= */
+    const registerModal = document.getElementById('registerModal');
+    const overwriteModal = document.getElementById('overwriteModal');
+    const regPlayerIdInput = document.getElementById('regPlayerId');
+    const registerScoreBtn = document.getElementById('registerScoreBtn');
+    
+    let hasSubmittedThisGame = false; // 같은 판에서 중복 전송 제어용 플래그
+    let pendingData = null; // 오버레이 스코어 전송 홀딩 데이터 구조체
+
+    // 토스트 팝업 제어
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toastNotification');
+      const toastText = document.getElementById('toastText');
+      toastText.innerText = message;
+      
+      if (type === 'error') {
+        toast.classList.remove('border-emerald-500', 'text-emerald-400');
+        toast.classList.add('border-rose-500', 'text-rose-400');
+      } else {
+        toast.classList.remove('border-rose-500', 'text-rose-400');
+        toast.classList.add('border-emerald-500', 'text-emerald-400');
+      }
+
+      toast.classList.remove('opacity-0', 'pointer-events-none', 'scale-95');
+      toast.classList.add('opacity-100', 'scale-100');
+      
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'scale-100');
+        toast.classList.add('opacity-0', 'pointer-events-none', 'scale-95');
+      }, 3000);
+    }
+
+    // 기록등록 버튼 트리거
+    registerScoreBtn.addEventListener('click', () => {
+      playSound('button');
+      if (hasSubmittedThisGame) {
+        showToast("이미 이번 판의 랭킹 등록을 완료했습니다.", "error");
+        return;
+      }
+      
+      // 기존에 입력해서 캐싱해둔 아이디가 있다면 프리필 처리
+      const savedId = localStorage.getItem('arcade_snake_saved_id');
+      if (savedId) {
+        regPlayerIdInput.value = savedId;
+      }
+
+      registerModal.classList.remove('hidden');
+    });
+
+    // 등록창 닫기
+    document.getElementById('closeRegisterModalBtn').addEventListener('click', () => {
+      playSound('button');
+      registerModal.classList.add('hidden');
+    });
+    document.getElementById('cancelRegBtn').addEventListener('click', () => {
+      playSound('button');
+      registerModal.classList.add('hidden');
+    });
+
+    // 덮어쓰기 취소
+    document.getElementById('btnCancelOverwrite').addEventListener('click', () => {
+      playSound('button');
+      overwriteModal.classList.add('hidden');
+      pendingData = null;
+    });
+
+    // 아이디 제출 버튼 리스너
+    document.getElementById('submitRegBtn').addEventListener('click', () => {
+      playSound('button');
+      const inputId = regPlayerIdInput.value.trim();
+      
+      if (!inputId) {
+        showToast("아이디를 올바르게 입력해주세요.", "error");
+        return;
+      }
+
+      if (!currentUser) {
+        showToast("서버에 로그인되지 않았습니다. 잠시만 기다려주세요.", "error");
+        return;
+      }
+
+      // 로컬 스토리지에 캐시 등록
+      localStorage.setItem('arcade_snake_saved_id', inputId);
+
+      // 동일 명칭 아이디 검색 (대소문자 구별 제외 처리)
+      const duplicateRecord = cachedLeaderboardRecords.find(r => r.username.toLowerCase() === inputId.toLowerCase());
+
+      if (duplicateRecord) {
+        if (score > duplicateRecord.score) {
+          // 같은 아이디가 존재하며 더 높은 점수를 얻은 경우 덮어씌우기 가이드 오픈
+          pendingData = {
+            id: duplicateRecord.id,
+            username: inputId,
+            score: score
+          };
+          openOverwriteConfirmation(duplicateRecord.score, score, inputId);
+        } else {
+          // 동일 아이디가 존재하지만 신규 획득 점수가 이전 최고 점수보다 낮거나 같은 경우 단순 신규 등록으로 처리
+          saveAsNewRecord(inputId, score);
+        }
+      } else {
+        // 기존 중복 아이디 없음 -> 정상 단독 신규 생성
+        saveAsNewRecord(inputId, score);
+      }
+    });
+
+    // 덮어쓰기 분기 모달창 오픈
+    function openOverwriteConfirmation(oldScore, newScore, username) {
+      const msg = document.getElementById('overwriteMsg');
+      msg.innerHTML = `${rankMeta.label}에 이미 <strong>${username}</strong> 님의 기록(<strong>${oldScore.toLocaleString()}점</strong>)이 등록되어 있습니다.<br><br>더 높은 이번 최고 기록인 <strong>${newScore.toLocaleString()}점</strong>으로 덮어씌우시겠습니까?`;
+      overwriteModal.classList.remove('hidden');
+    }
+
+    // 신규 도큐먼트 등록
+    async function saveAsNewRecord(username, newScore) {
+      if (!currentUser) return;
+      try {
+        const leaderboardCol = collection(db, ...rankPath);
+        await addDoc(leaderboardCol, {
+          username: username,
+          score: newScore,
+          timestamp: Date.now()
+        });
+        
+        finalizeSubmission();
+        showToast("명예의 전당에 성공적으로 이름을 올렸습니다!");
+      } catch (e) {
+        console.error("Firebase Record Add Error:", e);
+        showToast("기록 등록에 실패했습니다. 다시 시도해 주세요.", "error");
+      }
+    }
+
+    // 기존 도큐먼트 덮어쓰기 업데이트 트리거 (덮어씌우기)
+    document.getElementById('btnOverwrite').addEventListener('click', async () => {
+      playSound('button');
+      if (!currentUser || !pendingData) return;
+
+      try {
+        const docRef = doc(db, ...rankPath, pendingData.id);
+        await updateDoc(docRef, {
+          score: pendingData.score,
+          timestamp: Date.now() // 최신 갱신 기준으로 타임스탬프 덮어쓰기
+        });
+
+        overwriteModal.classList.add('hidden');
+        finalizeSubmission();
+        showToast("이전 최고 점수를 성공적으로 갱신했습니다!");
+      } catch (e) {
+        console.error("Firebase Update Error:", e);
+        showToast("갱신 도중 에러가 발생했습니다.", "error");
+      }
+    });
+
+    // 기존 기록이 있음에도 유지하고 신규 등록 처리 트리거 (모두 등록)
+    document.getElementById('btnKeepBoth').addEventListener('click', async () => {
+      playSound('button');
+      if (!currentUser || !pendingData) return;
+
+      await saveAsNewRecord(pendingData.username, pendingData.score);
+      overwriteModal.classList.add('hidden');
+    });
+
+    // 성공 제출 완료 스위칭
+    function finalizeSubmission() {
+      hasSubmittedThisGame = true;
+      registerModal.classList.add('hidden');
+      pendingData = null;
+
+      // 등록 버튼 제거 및 비활성 표시
+      const regBtn = document.getElementById('registerScoreBtn');
+      regBtn.classList.add('opacity-50', 'pointer-events-none');
+      regBtn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i> 등록 완료`;
+      lucide.createIcons();
+      playSound('buff');
+    }
+
+    // 실시간 라벨 및 마스터 메타 데이터 구조 UI 동적 치환 결합
+    window.addEventListener('load', () => {
+      if (gameMeta && rankMeta) {
+        document.getElementById('game-title-header').textContent = gameMeta.name;
+        document.getElementById('overlay-welcome-title').textContent = gameMeta.name;
+        document.getElementById('leaderboard-title').innerHTML = `<i data-lucide="award" class="w-5 h-5 text-amber-400"></i> ${rankMeta.label} TOP 10`;
+        document.getElementById('register-modal-title').textContent = `${rankMeta.label} 등록`;
+        document.getElementById('submit-label').textContent = `${rankMeta.label} 등록 아이디 (ID)`;
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      drawMenuBackground();
+    });
+
+    function loop(time) {
+      if (isGameRunning && !isPaused) {
+        // 필요 시 매 프레임 파티클 연산 가동
+      }
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  </script>
+  <script defer src="/minigame/copyright-notice.js"></script>
+</body>
+</html>

@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오락실 테트리스</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Orbitron', 'Noto Sans KR', sans-serif;
+            background-color: #030712;
+        }
+        .cyber-glow {
+            text-shadow: 0 0 10px rgba(6, 182, 212, 0.7), 0 0 20px rgba(6, 182, 212, 0.4);
+        }
+        .cyber-border {
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+            border: 2px solid rgba(168, 85, 247, 0.6);
+        }
+    </style>
+  <script src="/_runtime/firebase-config?app=minigame"></script>
+  <meta name="author" content="게시판 운영자">
+  <meta name="copyright" content="© 2026 게시판">
+  <meta name="rights" content="AI 도구를 제작 보조로 활용해 운영자가 기획·구현·편집한 자체 콘텐츠">
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col items-center justify-between p-4 overflow-x-hidden selection:bg-cyan-500 selection:text-slate-900">
+
+    <header class="w-full max-w-6xl text-center my-4">
+        <h1 class="text-4xl md:text-5xl font-extrabold tracking-wider text-cyan-400 cyber-glow uppercase mb-1">
+            🕹️ 오락실 테트리스
+        </h1>
+    </header>
+
+    <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-6 items-start my-auto">
+        
+        <div class="lg:col-span-3 flex flex-col gap-4 w-full">
+            <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 backdrop-blur-md">
+                <h3 class="text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider">GAME MODE SELECT</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btnModeScore" class="py-2 px-3 rounded-lg font-bold text-xs transition-all duration-200 bg-cyan-600 text-slate-950 shadow-[0_0_10px_rgba(6,182,212,0.5)]" onclick="switchMode('score')">
+                        🏆 점수 모드
+                    </button>
+                    <button id="btnModeSprint" class="py-2 px-3 rounded-lg font-bold text-xs transition-all duration-200 bg-slate-800 text-slate-400 hover:bg-slate-700" onclick="switchMode('sprint')">
+                        ⚡ 스프린트 (40줄)
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 backdrop-blur-md flex flex-col gap-4">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span class="text-xs text-slate-400 font-bold uppercase">SCORE</span>
+                    <span id="txtScore" class="text-2xl font-bold text-cyan-400 cyber-glow">0</span>
+                </div>
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span class="text-xs text-slate-400 font-bold uppercase">LINES</span>
+                    <span id="txtLines" class="text-2xl font-bold text-purple-400">0 <span id="sprintTarget" class="text-xs text-slate-500"></span></span>
+                </div>
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span class="text-xs text-slate-400 font-bold uppercase">LEVEL</span>
+                    <span id="txtLevel" class="text-2xl font-bold text-yellow-400">1</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-slate-400 font-bold uppercase">TIME</span>
+                    <span id="txtTime" class="text-2xl font-bold text-emerald-400">00:00.00</span>
+                </div>
+            </div>
+
+            <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 text-xs text-slate-400 flex flex-col gap-2">
+                <h4 class="font-bold text-slate-300 uppercase tracking-wider mb-1">🎮 CONTROL GUIDE</h4>
+                <div class="flex justify-between"><span>← / →</span><span>좌우 이동</span></div>
+                <div class="flex justify-between"><span>↓ (Arrow Down)</span><span>소프트 드롭 (낙하 가속)</span></div>
+                <div class="flex justify-between"><span>↑ (Arrow Up)</span><span>시계 방향 회전</span></div>
+                <div class="flex justify-between"><span>Z</span><span>반시계 방향 회전</span></div>
+                <div class="flex justify-between"><span>Space</span><span>하드 드롭 (즉시 낙하)</span></div>
+                <div class="flex justify-between"><span>C / Shift</span><span>홀드 (블록 보관)</span></div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-5 flex flex-col items-center justify-center w-full">
+            <div class="flex gap-4 mb-3 w-full justify-center items-center">
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex flex-col items-center w-24">
+                    <span class="text-[10px] text-slate-500 font-bold uppercase mb-1">HOLD</span>
+                    <canvas id="canvasHold" width="60" height="60" class="bg-slate-950/50 rounded-lg"></canvas>
+                </div>
+                <div class="flex-1 flex justify-center gap-2">
+                    <button id="btnStart" class="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-extrabold rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)] text-sm tracking-wider uppercase cursor-pointer">
+                        GAME START
+                    </button>
+                </div>
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex flex-col items-center w-24">
+                    <span class="text-[10px] text-slate-500 font-bold uppercase mb-1">NEXT</span>
+                    <canvas id="canvasNext" width="60" height="60" class="bg-slate-950/50 rounded-lg"></canvas>
+                </div>
+            </div>
+
+            <div class="relative rounded-2xl p-1 bg-slate-950 cyber-border">
+                <canvas id="canvasGrid" width="300" height="600" class="block rounded-xl bg-slate-950/90"></canvas>
+                
+                <div id="canvasOverlay" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 rounded-xl hidden transition-all duration-300">
+                    <div id="overlayText" class="text-4xl font-extrabold text-cyan-400 cyber-glow animate-pulse">READY</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-4 flex flex-col gap-4 w-full">
+            <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 backdrop-blur-md flex flex-col h-[670px]">
+                <div class="mb-3 border-b border-slate-800 pb-3">
+                    <h2 class="text-lg font-bold text-cyan-400 tracking-wider uppercase flex items-center gap-2">
+                        🏆 명예의 전당 <span id="leaderboardModeTitle" class="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded border border-cyan-800/50">점수 모드</span>
+                    </h2>
+                    <div class="mt-2 bg-emerald-950/40 border border-emerald-900/50 rounded-lg p-2 text-[11px] text-emerald-300 flex items-center justify-between">
+                        <span>⏱️ 랭킹 동기화 정책</span>
+                        <span class="font-bold text-emerald-400 animate-pulse">🔥 상시 최고 기록 경쟁 중</span>
+                    </div>
+                </div>
+
+                <div id="leaderboardList" class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar text-sm">
+                    <div class="text-center text-slate-500 py-10">데이터를 불러오는 중입니다...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="w-full max-w-6xl text-center text-[11px] text-slate-600 my-2 tracking-wide">
+        &copy; 2026 Arcade Tetris. Stack & Clear Blocks. Architecture powered by Firebase Firestore Anonymously.
+    </footer>
+
+    <div id="modalScoreInput" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm hidden animate-fade-in">
+        <div class="bg-slate-900 border-2 border-cyan-500/50 p-6 rounded-2xl max-w-md w-full mx-4 shadow-[0_0_30px_rgba(6,182,212,0.3)]">
+            <h3 class="text-xl font-bold text-cyan-400 mb-2 tracking-wider uppercase">✨ 새로운 전설의 기록 탄생!</h3>
+            <p class="text-xs text-slate-400 mb-4">리더보드에 등록할 닉네임을 영문/한글 최대 10자 이내로 입력해주세요.</p>
+            
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 mb-4 flex justify-between items-center">
+                <span class="text-xs text-slate-500 uppercase font-bold" id="lblModalRecordType">RECORD</span>
+                <span class="text-xl font-bold text-amber-400" id="txtModalRecordValue">0</span>
+            </div>
+
+            <input type="text" id="inputNickname" maxlength="10" placeholder="닉네임을 입력하세요..." 
+                   class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-bold mb-4 transition-all">
+            
+            <div class="flex gap-2">
+                <button id="btnCancelSubmit" class="w-1/3 py-3 bg-slate-800 hover:bg-slate-700 text-slate-400 font-bold rounded-xl transition-all cursor-pointer text-xs uppercase">창 닫기</button>
+                <button id="btnSubmitRecord" class="w-2/3 py-3 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-extrabold rounded-xl transition-all shadow-[0_0_15px_rgba(6,182,212,0.4)] text-xs uppercase cursor-pointer">기록 등록하기</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalDuplicateCheck" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md hidden">
+        <div class="bg-slate-900 border-2 border-purple-500/50 p-6 rounded-2xl max-w-md w-full mx-4 shadow-[0_0_30px_rgba(168,85,247,0.3)]">
+            <div class="w-12 h-12 rounded-full bg-purple-900/50 border border-purple-500 flex items-center justify-center mb-3 text-purple-400 text-xl">⚠️</div>
+            <h3 class="text-lg font-bold text-purple-400 mb-1 tracking-wider">이미 존재하는 닉네임입니다!</h3>
+            <p class="text-xs text-slate-400 mb-4">현재 명예의 전당에 동일한 닉네임이 탐지되었습니다. 기존 점수보다 높은 성적입니다. 기록 보존 방식을 선택하십시오.</p>
+            
+            <div class="flex flex-col gap-2">
+                <button id="btnDupOverwrite" class="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-slate-100 font-bold rounded-xl text-xs transition-all shadow-[0_0_10px_rgba(168,85,247,0.4)] cursor-pointer text-left px-4 flex justify-between items-center">
+                    <span>1) 기존 기록 위에 덮어쓰기</span>
+                    <span class="text-[10px] bg-slate-950/50 px-2 py-0.5 rounded text-purple-300 font-mono">UPDATE</span>
+                </button>
+                <button id="btnDupNewRegister" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-all border border-slate-700 cursor-pointer text-left px-4 flex justify-between items-center">
+                    <span>2) 별도의 신규 기록으로 등록</span>
+                    <span class="text-[10px] bg-slate-950/50 px-2 py-0.5 rounded text-slate-400 font-mono">ADD NEW</span>
+                </button>
+                <button id="btnDupCancel" class="w-full py-2 text-slate-500 hover:text-slate-400 font-bold text-center text-xs cursor-pointer mt-2">등록 취소</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase Modular SDK v10 CDN 바인딩
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, query, orderBy, limit, onSnapshot, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // 1. 파이어베이스 인스턴스 초기화 및 익명인증 보안 캡슐화 구현
+        let fixedBase64 = _mg_fbc.replace("嫁", "VjU"); 
+        let minigameConfig;
+        try {
+            minigameConfig = JSON.parse(atob(fixedBase64));
+        } catch(e) {
+            minigameConfig = window.__PLAYGROUND_FIREBASE_MINIGAME_CONFIG__;
+        }
+
+        const app = initializeApp(minigameConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+        signInAnonymously(auth).then((cred) => {
+            currentUser = cred.user;
+            initLeaderboardRealtimeSync();
+        }).catch((err) => console.error("Firebase Auth Fail:", err));
+
+        const GAME_ID = "tetris";
+        const scorePathTree = ['artifacts', GAME_ID, 'public', 'data', 'leaderboard_s'];
+        const sprintPathTree = ['artifacts', GAME_ID, 'public', 'data', 'leaderboard_t'];
+
+        // ==========================================
+        // TETRIS GRAPHICS & PHYSICS ENGINE CORE
+        // ==========================================
+        const canvas = document.getElementById('canvasGrid');
+        const ctx = canvas.getContext('2d');
+        const canvasNext = document.getElementById('canvasNext');
+        const ctxNext = canvasNext.getContext('2d');
+        const canvasHold = document.getElementById('canvasHold');
+        const ctxHold = canvasHold.getContext('2d');
+
+        const COLS = 10;
+        const ROWS = 20;
+        const BLOCK_SIZE = 30;
+
+        const COLORS = [
+            null,
+            '#06b6d4', // I
+            '#3b82f6', // J
+            '#f97316', // L
+            '#eab308', // O
+            '#22c55e', // S
+            '#a855f7', // T
+            '#ef4444'  // Z
+        ];
+
+        const SHAPES = [
+            [],
+            [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], 
+            [[1,0,0],[1,1,1],[0,0,0]],                 
+            [[0,0,1],[1,1,1],[0,0,0]],                 
+            [[1,1],[1,1]],                             
+            [[0,1,1],[1,1,0],[0,0,0]],                 
+            [[0,1,0],[1,1,1],[0,0,0]],                 
+            [[1,1,0],[0,1,1],[0,0,0]]                  
+        ];
+
+        let grid = Array.from({length: ROWS}, () => Array(COLS).fill(0));
+        let currentMode = 'score'; 
+        let score = 0;
+        let linesCleared = 0;
+        let level = 1;
+        let gameOver = true;
+        let isPaused = false;
+        
+        let currentPiece = null;
+        let nextPiece = null;
+        let holdPiece = null;
+        let canHold = true;
+
+        let dropCounter = 0;
+        let dropInterval = 1000; 
+        let lastTime = 0;
+        
+        let gameStartTime = 0;
+        let accumulatedTime = 0;
+        let timerInterval = null;
+
+        class Piece {
+            constructor(type) {
+                this.type = type;
+                this.matrix = JSON.parse(JSON.stringify(SHAPES[type]));
+                this.x = Math.floor((COLS - this.matrix[0].length) / 2);
+                this.y = type === 1 ? -1 : 0;
+            }
+        }
+
+        window.switchMode = function(mode) {
+            if(!gameOver) return; 
+            currentMode = mode;
+            document.getElementById('btnModeScore').className = mode === 'score' ? "py-2 px-3 rounded-lg font-bold text-xs transition-all duration-200 bg-cyan-600 text-slate-950 shadow-[0_0_10px_rgba(6,182,212,0.5)]" : "py-2 px-3 rounded-lg font-bold text-xs transition-all duration-200 bg-slate-800 text-slate-400 hover:bg-slate-700";
+            document.getElementById('btnModeSprint').className = mode === 'sprint' ? "py-2 px-3 rounded-lg font-bold text-xs transition-all duration-200 bg-cyan-600 text-slate-950 shadow-[0_0_10px_rgba(6,182,212,0.5)]" : "py-2 px-3 rounded-lg font-bold text-xs transition-all duration-200 bg-slate-800 text-slate-400 hover:bg-slate-700";
+            document.getElementById('leaderboardModeTitle').innerText = mode === 'score' ? "점수 모드" : "스프린트 모드";
+            document.getElementById('sprintTarget').innerText = mode === 'sprint' ? "/ 40" : "";
+            initLeaderboardRealtimeSync();
+            resetGameTrack();
+        };
+
+        function createPiece() {
+            if (!nextPiece) {
+                nextPiece = new Piece(Math.floor(Math.random() * 7) + 1);
+            }
+            currentPiece = nextPiece;
+            nextPiece = new Piece(Math.floor(Math.random() * 7) + 1);
+            
+            if (collide(grid, currentPiece)) {
+                endGameEngine();
+            }
+        }
+
+        function collide(grid, piece) {
+            const m = piece.matrix;
+            const o = piece;
+            for (let r = 0; r < m.length; ++r) {
+                for (let c = 0; c < m[r].length; ++c) {
+                    if (m[r][c] !== 0) {
+                        let targetX = c + o.x;
+                        let targetY = r + o.y;
+                        if (targetY >= ROWS || targetX < 0 || targetX >= COLS || (targetY >= 0 && grid[targetY][targetX] !== 0)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function merge(grid, piece) {
+            piece.matrix.forEach((row, r) => {
+                row.forEach((value, c) => {
+                    if (value !== 0) {
+                        if(r + piece.y >= 0) {
+                            grid[r + piece.y][c + piece.x] = piece.type;
+                        }
+                    }
+                });
+            });
+        }
+
+        function rotate(matrix, dir) {
+            for (let y = 0; y < matrix.length; ++y) {
+                for (let x = 0; x < y; ++x) {
+                    [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
+                }
+            }
+            if (dir > 0) matrix.forEach(row => row.reverse());
+            else matrix.reverse();
+        }
+
+        function playerRotate(dir) {
+            const pos = currentPiece.x;
+            let offset = 1;
+            rotate(currentPiece.matrix, dir);
+            while (collide(grid, currentPiece)) {
+                currentPiece.x += offset;
+                offset = -(offset + (offset > 0 ? 1 : -1));
+                if (offset > currentPiece.matrix[0].length) {
+                    rotate(currentPiece.matrix, -dir);
+                    currentPiece.x = pos;
+                    return;
+                }
+            }
+        }
+
+        function playerMove(dir) {
+            currentPiece.x += dir;
+            if (collide(grid, currentPiece)) {
+                currentPiece.x -= dir;
+            }
+        }
+
+        function playerDrop() {
+            currentPiece.y++;
+            if (collide(grid, currentPiece)) {
+                currentPiece.y--;
+                merge(grid, currentPiece);
+                arenaSweep();
+                createPiece();
+                canHold = true;
+            }
+            dropCounter = 0;
+        }
+
+        function playerHardDrop() {
+            while (!collide(grid, currentPiece)) {
+                currentPiece.y++;
+            }
+            currentPiece.y--;
+            merge(grid, currentPiece);
+            arenaSweep();
+            createPiece();
+            canHold = true;
+            dropCounter = 0;
+        }
+
+        function executeHold() {
+            if (!canHold) return;
+            if (!holdPiece) {
+                holdPiece = currentPiece.type;
+                createPiece();
+            } else {
+                const temp = currentPiece.type;
+                currentPiece = new Piece(holdPiece);
+                holdPiece = temp;
+            }
+            canHold = false;
+        }
+
+        function arenaSweep() {
+            let rowCount = 0;
+            outer: for (let r = ROWS - 1; r >= 0; --r) {
+                for (let c = 0; c < COLS; ++c) {
+                    if (grid[r][c] === 0) {
+                        continue outer;
+                    }
+                }
+                const row = grid.splice(r, 1)[0].fill(0);
+                grid.unshift(row);
+                ++r;
+                rowCount++;
+            }
+
+            if (rowCount > 0) {
+                linesCleared += rowCount;
+                if (currentMode === 'score') {
+                    const baseScores = [0, 100, 300, 500, 800];
+                    score += baseScores[rowCount] * level;
+                    level = Math.floor(linesCleared / 10) + 1;
+                    dropInterval = Math.max(100, 1000 - (level - 1) * 110);
+                } else if (currentMode === 'sprint') {
+                    if (linesCleared >= 40) {
+                        linesCleared = 40; 
+                        endGameEngine(true); 
+                    }
+                }
+                updateDashboardUI();
+            }
+        }
+
+        function drawCell(ctx, x, y, type, targetSize = BLOCK_SIZE) {
+            ctx.fillStyle = COLORS[type];
+            ctx.fillRect(x * targetSize, y * targetSize, targetSize, targetSize);
+            ctx.strokeStyle = '#020617';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x * targetSize, y * targetSize, targetSize, targetSize);
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            ctx.fillRect(x * targetSize + 2, y * targetSize + 2, targetSize - 4, 3);
+        }
+
+        function draw() {
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = 'rgba(30, 41, 59, 0.3)';
+            ctx.lineWidth = 1;
+            for(let i=0; i<COLS; i++) {
+                for(let j=0; j<ROWS; j++) {
+                    ctx.strokeRect(i*BLOCK_SIZE, j*BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                }
+            }
+
+            grid.forEach((row, r) => {
+                row.forEach((value, c) => {
+                    if (value !== 0) {
+                        drawCell(ctx, c, r, value);
+                    }
+                });
+            });
+
+            if (currentPiece && !gameOver) {
+                let ghost = { x: currentPiece.x, y: currentPiece.y, matrix: currentPiece.matrix };
+                while (!collide(grid, ghost)) {
+                    ghost.y++;
+                }
+                ghost.y--;
+                
+                ghost.matrix.forEach((row, r) => {
+                    row.forEach((value, c) => {
+                        if (value !== 0 && r + ghost.y >= 0) {
+                            ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+                            ctx.strokeStyle = COLORS[currentPiece.type];
+                            ctx.lineWidth = 1;
+                            ctx.fillRect((c + ghost.x) * BLOCK_SIZE, (r + ghost.y) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                            ctx.strokeRect((c + ghost.x) * BLOCK_SIZE, (r + ghost.y) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        }
+                    });
+                });
+
+                currentPiece.matrix.forEach((row, r) => {
+                    row.forEach((value, c) => {
+                        if (value !== 0 && r + currentPiece.y >= 0) {
+                            drawCell(ctx, c + currentPiece.x, r + currentPiece.y, currentPiece.type);
+                        }
+                    });
+                });
+            }
+
+            drawSubCanvas(ctxNext, canvasNext, nextPiece ? nextPiece.type : null);
+            drawSubCanvas(ctxHold, canvasHold, holdPiece);
+        }
+
+        function drawSubCanvas(subCtx, subCanvas, type) {
+            subCtx.fillStyle = '#020617';
+            subCtx.fillRect(0, 0, subCanvas.width, subCanvas.height);
+            if (!type) return;
+
+            const matrix = SHAPES[type];
+            const size = 12; 
+            const offsetX = (subCanvas.width - matrix[0].length * size) / 2;
+            const offsetY = (subCanvas.height - matrix.length * size) / 2;
+
+            matrix.forEach((row, r) => {
+                row.forEach((value, c) => {
+                    if (value !== 0) {
+                        subCtx.fillStyle = COLORS[type];
+                        subCtx.fillRect(offsetX + c * size, offsetY + r * size, size, size);
+                        subCtx.strokeStyle = '#020617';
+                        subCtx.lineWidth = 1;
+                        subCtx.strokeRect(offsetX + c * size, offsetY + r * size, size, size);
+                    }
+                });
+            });
+        }
+
+        function update(time = 0) {
+            if (gameOver || isPaused) return;
+
+            const deltaTime = time - lastTime;
+            lastTime = time;
+
+            dropCounter += deltaTime;
+            if (dropCounter > dropInterval) {
+                playerDrop();
+            }
+
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        function updateDashboardUI() {
+            document.getElementById('txtScore').innerText = score;
+            document.getElementById('txtLines').innerHTML = `${linesCleared} <span id="sprintTarget" class="text-xs text-slate-500">${currentMode === 'sprint' ? '/ 40' : ''}</span>`;
+            document.getElementById('txtLevel').innerText = level;
+        }
+
+        function formatTimeLayout(ms) {
+            const minutes = Math.floor(ms / 60000);
+            const seconds = Math.floor((ms % 60000) / 1000);
+            const centiseconds = Math.floor((ms % 1000) / 10);
+            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
+        }
+
+        function startTimerEngine() {
+            if(timerInterval) clearInterval(timerInterval);
+            gameStartTime = Date.now();
+            timerInterval = setInterval(() => {
+                if(!gameOver && !isPaused) {
+                    accumulatedTime = Date.now() - gameStartTime;
+                    document.getElementById('txtTime').innerText = formatTimeLayout(accumulatedTime);
+                }
+            }, 30);
+        }
+
+        function stopTimerEngine() {
+            if(timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function resetGameTrack() {
+            grid.forEach(row => row.fill(0));
+            score = 0;
+            linesCleared = 0;
+            level = 1;
+            dropInterval = 1000;
+            dropCounter = 0;
+            accumulatedTime = 0;
+            holdPiece = null;
+            canHold = true;
+            document.getElementById('txtTime').innerText = "00:00.00";
+            updateDashboardUI();
+            draw();
+        }
+
+        function startGameEngine() {
+            if (!gameOver) return;
+            resetGameTrack();
+            gameOver = false;
+            isPaused = false;
+            
+            const overlay = document.getElementById('canvasOverlay');
+            overlay.classList.remove('hidden');
+            let count = 3;
+            document.getElementById('overlayText').innerText = count;
+
+            let countdown = setInterval(() => {
+                count--;
+                if(count > 0) {
+                    document.getElementById('overlayText').innerText = count;
+                } else if(count === 0) {
+                    document.getElementById('overlayText').innerText = "START!";
+                } else {
+                    countdown && clearInterval(countdown);
+                    overlay.classList.add('hidden');
+                    nextPiece = null;
+                    createPiece();
+                    startTimerEngine();
+                    lastTime = performance.now();
+                    requestAnimationFrame(update);
+                }
+            }, 700);
+        }
+
+        function endGameEngine(isSprintSuccess = false) {
+            gameOver = true;
+            stopTimerEngine();
+            draw();
+            
+            document.getElementById('canvasOverlay').classList.remove('hidden');
+            document.getElementById('overlayText').innerHTML = isSprintSuccess ? "<span class='text-emerald-400'>COMPLETE!</span>" : "<span class='text-red-500'>GAME OVER</span>";
+
+            setTimeout(() => {
+                if (currentMode === 'score' && score > 0) {
+                    openRecordModal(score);
+                } else if (currentMode === 'sprint' && isSprintSuccess) {
+                    openRecordModal(accumulatedTime);
+                }
+            }, 1000);
+        }
+
+        window.addEventListener('keydown', event => {
+            if (gameOver) return;
+            
+            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(event.code)) {
+                event.preventDefault();
+            }
+
+            switch(event.code) {
+                case 'ArrowLeft':
+                    playerMove(-1);
+                    break;
+                case 'ArrowRight':
+                    playerMove(1);
+                    break;
+                case 'ArrowDown':
+                    playerDrop();
+                    break;
+                case 'ArrowUp':
+                    playerRotate(1); 
+                    break;
+                case 'Space':
+                    playerHardDrop(); 
+                    break;
+                case 'KeyZ':
+                    playerRotate(-1); 
+                    break;
+                case 'KeyC':
+                case 'ShiftLeft':
+                case 'ShiftRight':
+                    executeHold();
+                    break;
+            }
+            draw();
+        });
+
+        document.getElementById('btnStart').addEventListener('click', () => {
+            if(gameOver) startGameEngine();
+        });
+
+
+        // ==========================================
+        // BUSINESS LOGIC: CORE FIRESTORE LEADERBOARD
+        // ==========================================
+        let currentRecordPending = null;
+        let matchedOldDocId = null; 
+
+        const scoreSpreadPath = [...scorePathTree];
+        const sprintSpreadPath = [...sprintPathTree];
+        
+        function getActivePath() {
+            return currentMode === 'score' ? scoreSpreadPath : sprintSpreadPath;
+        }
+
+        function initLeaderboardRealtimeSync() {
+            const currentPath = getActivePath();
+            const orderField = currentMode === 'score' ? 'score' : 'time';
+            const orderDir = currentMode === 'score' ? 'desc' : 'asc';
+            
+            const q = query(collection(db, ...currentPath), orderBy(orderField, orderDir), limit(15)); 
+            
+            onSnapshot(q, (snapshot) => {
+                let validRankData = [];
+
+                snapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    validRankData.push({ id: doc.id, ...data });
+                });
+
+                if(currentMode === 'score') {
+                    validRankData.sort((a,b) => b.score - a.score);
+                } else {
+                    validRankData.sort((a,b) => a.time - b.time);
+                }
+
+                renderLeaderboardUI(validRankData.slice(0, 10));
+            }, (error) => {
+                console.error("Leaderboard Sync Error: ", error);
+            });
+        }
+
+        function renderLeaderboardUI(records) {
+            const container = document.getElementById('leaderboardList');
+            container.innerHTML = '';
+
+            if (records.length === 0) {
+                container.innerHTML = `<div class="text-center text-slate-600 py-12 text-xs">등록된 기록이 없습니다.<br>첫 전설의 주인공이 되어보세요!</div>`;
+                return;
+            }
+
+            records.forEach((rec, idx) => {
+                const rank = idx + 1;
+                let rankColorClass = "text-slate-400";
+                let borderColorClass = "border-slate-800/60 bg-slate-950/40";
+                
+                if(rank === 1) {
+                    rankColorClass = "text-amber-400 font-extrabold text-base";
+                    borderColorClass = "border-amber-500/40 bg-amber-950/10 shadow-[inset_0_0_10px_rgba(234,179,8,0.05)]";
+                } else if(rank === 2) {
+                    rankColorClass = "text-slate-300 font-bold";
+                    borderColorClass = "border-slate-400/30 bg-slate-800/20";
+                } else if(rank === 3) {
+                    rankColorClass = "text-orange-400 font-bold";
+                    borderColorClass = "border-orange-500/20 bg-orange-950/10";
+                }
+
+                const recordDisplay = currentMode === 'score' 
+                    ? `${rec.score.toLocaleString()} PTS`
+                    : formatTimeLayout(rec.time);
+
+                const cardHtml = `
+                    <div class="flex items-center justify-between p-3 rounded-xl border ${borderColorClass} transition-all duration-300 hover:translate-x-1">
+                        <div class="flex items-center gap-3">
+                            <span class="w-6 font-mono text-center ${rankColorClass}">#${rank}</span>
+                            <span class="font-bold tracking-wide text-slate-200">${rec.nickname}</span>
+                        </div>
+                        <div class="text-right flex flex-col items-end">
+                            <span class="font-mono font-bold text-cyan-400">${recordDisplay}</span>
+                            <span class="text-[9px] text-slate-600 mt-0.5">${new Date(rec.timestamp).toLocaleDateString('ko-KR', {hour:'2-digit', minute:'2-digit'})}</span>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += cardHtml;
+            });
+        }
+
+        function openRecordModal(val) {
+            currentRecordPending = val;
+            document.getElementById('lblModalRecordType').innerText = currentMode === 'score' ? "FINAL SCORE" : "CLEAR TIME";
+            document.getElementById('txtModalRecordValue').innerText = currentMode === 'score' ? val.toLocaleString() + " PTS" : formatTimeLayout(val);
+            document.getElementById('modalScoreInput').classList.remove('hidden');
+            document.getElementById('inputNickname').focus();
+        }
+
+        function closeRecordModal() {
+            document.getElementById('modalScoreInput').classList.add('hidden');
+            document.getElementById('inputNickname').value = '';
+            currentRecordPending = null;
+        }
+
+        document.getElementById('btnCancelSubmit').addEventListener('click', closeRecordModal);
+
+        document.getElementById('btnSubmitRecord').addEventListener('click', async () => {
+            const nickname = document.getElementById('inputNickname').value.trim();
+            if(!nickname) {
+                alert("닉네임을 입력해주십시오.");
+                return;
+            }
+
+            const currentPath = getActivePath();
+
+            try {
+                const q = query(collection(db, ...currentPath), where("nickname", "==", nickname));
+                const querySnapshot = await getDocs(q);
+
+                let activeRecords = [];
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    activeRecords.push({ id: doc.id, ...data });
+                });
+
+                if (activeRecords.length > 0) {
+                    if (currentMode === 'score') {
+                        activeRecords.sort((a, b) => b.score - a.score);
+                    } else {
+                        activeRecords.sort((a, b) => a.time - b.time);
+                    }
+
+                    let existingBest = activeRecords[0];
+                    let isNewRecordBetter = false;
+
+                    if (currentMode === 'score') {
+                        isNewRecordBetter = currentRecordPending > existingBest.score;
+                    } else {
+                        isNewRecordBetter = currentRecordPending < existingBest.time;
+                    }
+
+                    if (isNewRecordBetter) {
+                        matchedOldDocId = existingBest.id; 
+                        document.getElementById('modalScoreInput').classList.add('hidden');
+                        document.getElementById('modalDuplicateCheck').classList.remove('hidden');
+                    } else {
+                        await executeFinalWrite('ADD_NEW', nickname);
+                    }
+                } else {
+                    await executeFinalWrite('ADD_NEW', nickname);
+                }
+
+            } catch (err) {
+                console.error("Error evaluating nickname duplication: ", err);
+                alert("데이터 검증 도중 오류가 발생했습니다.");
+            }
+        });
+
+        document.getElementById('btnDupOverwrite').addEventListener('click', async () => {
+            const nickname = document.getElementById('inputNickname').value.trim();
+            await executeFinalWrite('OVERWRITE', nickname);
+        });
+
+        document.getElementById('btnDupNewRegister').addEventListener('click', async () => {
+            const nickname = document.getElementById('inputNickname').value.trim();
+            await executeFinalWrite('ADD_NEW', nickname);
+        });
+
+        document.getElementById('btnDupCancel').addEventListener('click', () => {
+            document.getElementById('modalDuplicateCheck').classList.add('hidden');
+            document.getElementById('modalScoreInput').classList.remove('hidden');
+        });
+
+        async function executeFinalWrite(strategy, nickname) {
+            const currentPath = getActivePath();
+            
+            const docData = {
+                nickname: nickname,
+                timestamp: Date.now() 
+            };
+
+            if (currentMode === 'score') {
+                docData.score = currentRecordPending;
+            } else {
+                docData.time = currentRecordPending;
+            }
+
+            try {
+                if (strategy === 'OVERWRITE' && matchedOldDocId) {
+                    await setDoc(doc(db, ...currentPath, matchedOldDocId), docData);
+                } else {
+                    await addDoc(collection(db, ...currentPath), docData);
+                }
+
+                document.getElementById('modalDuplicateCheck').classList.add('hidden');
+                closeRecordModal();
+                alert("성공적으로 명예의 전당에 등록되었습니다!");
+            } catch (err) {
+                console.error("Firestore Write Failed:", err);
+                alert("기록 등록에 실패했습니다. 서버 상태를 다시 확인해 주세요.");
+            } finally {
+                matchedOldDocId = null;
+            }
+        }
+
+        resetGameTrack();
+
+    </script>
+  <script defer src="/minigame/copyright-notice.js"></script>
+</body>
+</html>

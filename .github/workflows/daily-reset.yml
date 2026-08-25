@@ -1,0 +1,56 @@
+name: Daily Minigame Reset Backup (KST 00:15)
+
+on:
+  schedule:
+    # QStash runs at KST 00:00. This GitHub job is a delayed backup.
+    - cron: "15 15 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: backup-daily-minigame-reset
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Call protected minigame reset endpoint
+        env:
+          BACKUP_CRON_SECRET: ${{ secrets.BACKUP_CRON_SECRET }}
+          RESET_ENDPOINT: https://backup.example/api/cron/minigame-daily-reset
+          TRIGGER_EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$BACKUP_CRON_SECRET" ]; then
+            echo "GitHub Actions secret BACKUP_CRON_SECRET is not configured."
+            exit 1
+          fi
+
+          if ! response=$(curl \
+              --silent \
+              --show-error \
+              --fail-with-body \
+              --retry 1 \
+              --retry-all-errors \
+              --max-time 55 \
+              --header "Authorization: Bearer $BACKUP_CRON_SECRET" \
+              "$RESET_ENDPOINT"); then
+            echo "Minigame reset endpoint request failed."
+            printf '%s\n' "${response:-No response body}"
+            exit 1
+          fi
+
+          echo "Minigame reset endpoint response:"
+          printf '%s\n' "$response"
+
+          {
+            echo "### Daily minigame reset result"
+            echo "- Trigger: ${TRIGGER_EVENT}"
+            echo '```json'
+            printf '%s\n' "$response"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

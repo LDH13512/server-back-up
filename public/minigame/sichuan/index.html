@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>범키쨩의 사천성</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;800;900&family=Pretendard:wght@400;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #030712;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* 스크롤바 디자인 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1f2937;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #10b981;
+        }
+    </style>
+  <script src="/_runtime/firebase-config?app=minigame"></script>
+  <meta name="author" content="게시판 운영자">
+  <meta name="copyright" content="© 2026 게시판">
+  <meta name="rights" content="AI 도구를 제작 보조로 활용해 운영자가 기획·구현·편집한 자체 콘텐츠">
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col justify-between">
+
+    <!-- 글로벌 헤더 -->
+    <header class="bg-slate-950/80 backdrop-blur-md border-b border-emerald-500/20 px-4 py-3 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl animate-bounce">🀄</span>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-extrabold tracking-wider bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">오락실 사천성</h1>
+                    <p class="text-xs text-emerald-400/70 font-semibold tracking-widest">CLASSIC ARCADE CONTROLLER</p>
+                </div>
+            </div>
+            
+            <!-- 실시간 계기판 (대시보드) -->
+            <div class="flex items-center gap-4 bg-slate-900/90 px-4 py-2 rounded-xl border border-slate-800 shadow-inner">
+                <!-- 스테이지 표시판 신설 -->
+                <div class="text-center min-w-[60px]">
+                    <span class="text-[10px] text-slate-500 font-bold block">STAGE</span>
+                    <span id="stage-val" class="font-orbitron text-lg font-extrabold text-indigo-400">1</span>
+                </div>
+                <div class="h-6 w-px bg-slate-800"></div>
+                <div class="text-center min-w-[70px]">
+                    <span class="text-[10px] text-slate-500 font-bold block">SCORE</span>
+                    <span id="score-val" class="font-orbitron text-lg font-extrabold text-emerald-400">0</span>
+                </div>
+                <div class="h-6 w-px bg-slate-800"></div>
+                <div class="text-center min-w-[70px]">
+                    <span class="text-[10px] text-slate-500 font-bold block">TIME</span>
+                    <span id="time-val" class="font-orbitron text-lg font-extrabold text-amber-400">300</span>
+                </div>
+                <div class="h-6 w-px bg-slate-800"></div>
+                <div class="text-center min-w-[70px]">
+                    <span class="text-[10px] text-slate-500 font-bold block">REMAIN</span>
+                    <span id="remain-val" class="font-orbitron text-lg font-extrabold text-cyan-400">136</span>
+                </div>
+                <div class="h-6 w-px bg-slate-800"></div>
+                <div class="text-center min-w-[50px]">
+                    <span class="text-[10px] text-slate-500 font-bold block">COMBO</span>
+                    <span id="combo-val" class="font-orbitron text-lg font-extrabold text-pink-400">0</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 대지 -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-3 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+        
+        <!-- 왼쪽 3칸: 게임 컨트롤 및 캔버스 스크린 -->
+        <div class="lg:col-span-3 flex flex-col gap-4">
+            
+            <!-- 인게임 도구 옵션 -->
+            <div class="flex flex-wrap justify-between items-center bg-slate-900/60 p-3 rounded-2xl border border-slate-800 gap-3">
+                <div class="flex gap-2">
+                    <button id="hint-btn" class="px-3.5 py-2 bg-slate-850 hover:bg-emerald-950/40 border border-slate-800 hover:border-emerald-500/30 text-xs md:text-sm font-semibold rounded-xl transition flex items-center gap-1.5 active:scale-95">
+                        💡 힌트 <span id="hint-stock" class="bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded text-[11px] font-orbitron">3</span>
+                    </button>
+                    <button id="shuffle-btn" class="px-3.5 py-2 bg-slate-850 hover:bg-cyan-950/40 border border-slate-800 hover:border-cyan-500/30 text-xs md:text-sm font-semibold rounded-xl transition flex items-center gap-1.5 active:scale-95">
+                        🔀 셔플 <span id="shuffle-stock" class="bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded text-[11px] font-orbitron">3</span>
+                    </button>
+                    <!-- 기본 음소거 상태로 클래스 및 텍스트 렌더링 -->
+                    <button id="sound-btn" class="px-3.5 py-2 bg-slate-900 border border-slate-950 text-slate-600 text-xs md:text-sm font-semibold rounded-xl transition flex items-center gap-1.5">
+                        🔇 사운드 Off
+                    </button>
+                </div>
+                <div class="flex gap-2">
+                    <!-- 게임 포기하기 기능 (포기 시 현재 점수로 리더보드 등록 가능) -->
+                    <button id="forfeit-btn" class="px-4 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 font-bold text-xs md:text-sm rounded-xl transition shadow-lg shadow-red-950/50 active:scale-95 hidden">
+                        🏳️ 게임 포기
+                    </button>
+                </div>
+            </div>
+
+            <!-- 경고 배너 피드백 -->
+            <div id="no-moves-banner" class="hidden py-2 px-4 bg-red-500/10 border border-red-500/30 text-red-400 text-xs md:text-sm rounded-xl font-medium text-center animate-pulse">
+                ⚠️ 더 이상 연결할 수 있는 쌍이 없습니다! [셔플] 아이템을 사용하여 정렬을 섞으십시오.
+            </div>
+
+            <!-- 고해상도 캔버스 컨테이너 -->
+            <div id="canvas-container" class="bg-slate-950 rounded-2xl border-2 border-slate-900 shadow-2xl relative overflow-hidden flex justify-center items-center min-h-[250px] md:min-h-[440px]">
+                <canvas id="game-canvas" class="block absolute top-0 left-0"></canvas>
+                
+                <!-- 게임 대기 오버레이 스크린 -->
+                <div id="start-screen" class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center z-20 transition-all duration-300">
+                    <div class="text-center p-6 max-w-sm">
+                        <span class="text-6xl mb-4 block animate-pulse">🀄</span>
+                        <h2 class="text-3xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 font-orbitron mb-2">오락실 사천성</h2>
+                        <p class="text-xs text-slate-400 mb-6 leading-relaxed">같은 그림의 마작 패를 최대 2회 꺾이는 선으로 연결하여 제한시간 내에 모두 제거하세요!</p>
+                        <button id="start-game-btn" class="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-base rounded-2xl shadow-xl shadow-emerald-500/20 active:scale-95 transition-all duration-200">
+                            🎮 게임 시작
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 조작 가이드 -->
+            <div class="bg-slate-950/40 p-3 rounded-xl border border-slate-900 text-slate-500 text-[11px] md:text-xs flex flex-wrap gap-x-6 gap-y-1">
+                <span>⚡ <strong>3선 법칙:</strong> 꺾임 회수가 2회 이하인 선분으로만 연결할 수 있습니다.</span>
+                <span>🔥 <strong>연속 콤보:</strong> 빠르게 맞출수록 콤보 보너스 점수가 가중됩니다.</span>
+                <span>🚀 <strong>무한 스테이지:</strong> 판을 전부 깨면 시간이 연장되며 더 어려운 다음 스테이지가 열립니다!</span>
+            </div>
+        </div>
+
+        <!-- 오른쪽 1칸: 명예의 전당 리더보드 -->
+        <div class="bg-slate-950 border border-slate-900 rounded-3xl p-5 shadow-2xl flex flex-col h-[500px] lg:h-auto min-h-[450px]">
+            <div class="flex items-center gap-2 mb-4 pb-3 border-b border-slate-900">
+                <span class="text-xl">👑</span>
+                <h2 class="text-sm md:text-base font-bold tracking-tight text-slate-100">명예의 전당 (Top 10)</h2>
+            </div>
+            
+            <!-- 랭킹 리스트 리시버 -->
+            <div id="leaderboard-container" class="flex-grow overflow-y-auto space-y-2 pr-1 text-xs">
+                <div class="text-center text-slate-600 py-12">보드를 가져오는 중...</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 커스텀 알림 시스템 (토스트 모달 대체) -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- 점수 등록 & 닉네임 입력 모달 -->
+    <div id="modal-score" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 shadow-2xl">
+            <h3 class="text-lg md:text-xl font-bold text-slate-100 flex items-center gap-2 mb-1">
+                <span id="modal-score-title">🎉 게임 완료!</span>
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">획득한 점수를 등록하여 명예의 전당 랭킹에 도전해 보세요.</p>
+            
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-850 text-center mb-5">
+                <span class="text-[10px] text-slate-500 font-bold block mb-1">최종 합산 스코어</span>
+                <span id="modal-final-score" class="font-orbitron text-3xl font-black text-emerald-400">0</span>
+            </div>
+
+            <div class="mb-5">
+                <label for="nickname-input" class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">플레이어 이름</label>
+                <input type="text" id="nickname-input" maxlength="12" placeholder="닉네임 입력 (최대 12자)" 
+                       class="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-700 focus:outline-none focus:border-emerald-500 transition">
+            </div>
+
+            <div class="flex gap-2">
+                <button id="modal-cancel-btn" class="flex-1 py-3 bg-slate-800 hover:bg-slate-750 text-xs font-semibold rounded-xl transition text-slate-300">다음에 하기</button>
+                <button id="modal-submit-btn" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold rounded-xl text-white transition shadow-lg shadow-emerald-950/50">기록 업데이트</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 명예의 전당 이름 중복 분기 제어 커스텀 모달 -->
+    <div id="modal-conflict" class="fixed inset-0 bg-black/95 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-amber-500/30 rounded-3xl w-full max-w-md p-6 shadow-2xl">
+            <div class="w-10 h-10 bg-amber-500/10 border border-amber-500/30 rounded-full flex items-center justify-center text-lg mb-3">⚠️</div>
+            <h3 class="text-base md:text-lg font-bold text-slate-100 mb-1">동일한 닉네임이 탐지되었습니다!</h3>
+            <p class="text-xs text-slate-400 mb-4">입력하신 이름의 최고 점수 레코드가 존재합니다. 아래의 데이터 보존 방식 중 하나를 선택해 주세요.</p>
+            
+            <div class="space-y-2 mb-5">
+                <button id="conflict-overwrite-btn" class="w-full text-left p-3.5 bg-slate-950 hover:bg-slate-850 rounded-xl border border-slate-850 hover:border-emerald-500/30 transition flex justify-between items-center group">
+                    <div>
+                        <p class="font-bold text-xs text-emerald-400 group-hover:text-emerald-300">1) 기존 성적 위에 덮어쓰기</p>
+                        <p class="text-[10px] text-slate-500 mt-0.5">기존 랭커 데이터를 유지한 상태로 점수를 업데이트합니다.</p>
+                    </div>
+                    <span class="text-slate-700 group-hover:text-emerald-400 text-sm">➔</span>
+                </button>
+                <button id="conflict-new-btn" class="w-full text-left p-3.5 bg-slate-950 hover:bg-slate-850 rounded-xl border border-slate-850 hover:border-cyan-500/30 transition flex justify-between items-center group">
+                    <div>
+                        <p class="font-bold text-xs text-cyan-400 group-hover:text-cyan-300">2) 별개의 신규 기록으로 등록</p>
+                        <p class="text-[10px] text-slate-500 mt-0.5">기존 랭킹 문서를 보존하고, 별도의 고유 열을 새로 생성합니다.</p>
+                    </div>
+                    <span class="text-slate-700 group-hover:text-cyan-400 text-sm">➔</span>
+                </button>
+            </div>
+            <button id="conflict-cancel-btn" class="w-full py-2 bg-slate-850 text-slate-500 text-[11px] rounded-xl font-medium transition">선택 창 닫기</button>
+        </div>
+    </div>
+
+    <!-- 글로벌 시스템 푸터 -->
+    <footer class="bg-slate-950/60 border-t border-slate-950 text-center py-2.5 text-[10px] text-slate-700 font-medium">
+        &copy; 2026 Premium Sichuan Canvas Module. All rights reserved.
+    </footer>
+
+    <!-- ==========================================
+         CORE GAME ENGINE & DATA CONNECTIVITY SCRIPT
+         ========================================== -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { 
+            getFirestore, collection, doc, addDoc, setDoc, updateDoc, 
+            getDocs, onSnapshot, query, where
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // [제약조건 3] 미니게임 전용 환경 설정 디코딩
+        const minigameConfig = JSON.parse(atob(_mg_fbc));
+
+        const app = initializeApp(minigameConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // 환경 변수 획득
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'sichuan';
+        
+        // [RULE 1] 엄격한 Firestore 경로 설계 구조 준수
+        const DB_LEADERBOARD_TREE = ['artifacts', appId, 'public', 'data', 'leaderboard'];
+
+        // 사운드 관리 신디사이저 클래스 (Web Audio API)
+        class SoundSynth {
+            constructor() {
+                this.ctx = null;
+                this.enabled = false; // 첫 실행 시 음소거 상태(false)로 시작
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            play(type) {
+                if (!this.enabled) return;
+                this.init();
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+
+                const now = this.ctx.currentTime;
+                
+                if (type === 'select') {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, now); // A4
+                    osc.frequency.exponentialRampToValueAtTime(660, now + 0.08);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } else if (type === 'match') {
+                    // [요구사항 2] 맑은 오락실 아크릴 벨소리 "띠롱~" (주파수 시간차 복합 생성으로 청량감 배가)
+                    const osc1 = this.ctx.createOscillator();
+                    const osc2 = this.ctx.createOscillator();
+                    const gain1 = this.ctx.createGain();
+                    const gain2 = this.ctx.createGain();
+
+                    osc1.type = 'sine';
+                    osc2.type = 'sine';
+
+                    // 첫 번째 짧은 음: 미(E6, 1318.51Hz)
+                    osc1.frequency.setValueAtTime(1318.51, now);
+                    gain1.gain.setValueAtTime(0.08, now);
+                    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+                    // 두 번째 이어지는 높은 음: 도(C7, 2093.00Hz) - 0.05초 후 재생
+                    osc2.frequency.setValueAtTime(2093.00, now + 0.05);
+                    gain2.gain.setValueAtTime(0.0, now);
+                    gain2.gain.setValueAtTime(0.12, now + 0.05);
+                    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+                    osc1.connect(gain1);
+                    gain1.connect(this.ctx.destination);
+
+                    osc2.connect(gain2);
+                    gain2.connect(this.ctx.destination);
+
+                    osc1.start(now);
+                    osc1.stop(now + 0.15);
+
+                    osc2.start(now);
+                    osc2.stop(now + 0.3);
+                } else if (type === 'fail') {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(180, now);
+                    osc.frequency.linearRampToValueAtTime(100, now + 0.2);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'shuffle') {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.linearRampToValueAtTime(900, now + 0.15);
+                    osc.frequency.linearRampToValueAtTime(600, now + 0.3);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'clear') {
+                    const freqs = [523.25, 659.25, 783.99, 1046.50]; // C, E, G, C arpeggio
+                    freqs.forEach((freq, idx) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+                        gain.gain.setValueAtTime(0.12, now + idx * 0.1);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.4);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now + idx * 0.1);
+                        osc.stop(now + idx * 0.1 + 0.4);
+                    });
+                }
+            }
+        }
+
+        const sound = new SoundSynth();
+
+        // 게임 기본 상수 구성
+        const ROWS = 8;
+        const COLS = 17;
+        const GRID_ROWS = ROWS + 2; 
+        const GRID_COLS = COLS + 2; 
+
+        // [개선사항 1] 오렌지 및 망고 시각적 유사도 완전 회피 및 대비 극대화 에셋 리스트 설정
+        const EMOJIS = ['🍓', '🍇', '🍉', '🍊', '🍌', '🍍', '🍏', '🍩', '🍒', '🥝', '🫐', '🍿', '🥕', '🥑', '🧁', '🍔', '🍕'];
+
+        // 게임 엔진 구동 상태 변수
+        let grid = [];
+        let selected = null; 
+        let score = 0;
+        let timeLeft = 300;
+        let hintCount = 3;
+        let shuffleCount = 3;
+        let combo = 0;
+        let lastMatchTime = 0;
+        let isGameRunning = false;
+        let timerInterval = null;
+        let activeUser = null;
+        
+        // [개선사항 3] 무한 스테이지 상태 보존 변수 신설
+        let stage = 1;
+
+        // 캔버스 시스템 변수
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        let tileWidth = 0;
+        let tileHeight = 0;
+
+        // 렌더링용 임시 레이어 상태
+        let laserLinePath = null;
+        let laserTimer = 0;
+        let particles = [];
+
+        // 랭킹 전역 데이터 지연 이관용 객체
+        let pendingSaveData = { name: '', score: 0, existId: null };
+
+        // 입자 효과(Particle) 클래스
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 8;
+                this.vy = (Math.random() - 0.5) * 8 - 2;
+                this.color = color;
+                this.alpha = 1;
+                this.decay = Math.random() * 0.03 + 0.02;
+                this.size = Math.random() * 4 + 2;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.1; // 중력 영향
+                this.alpha -= this.decay;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // [개선사항 2] 정교한 그리드 화면 왜곡/어긋남 방지용 비율 고정(Aspect Ratio Lock) 해상도 리사이저
+        function resizeCanvas() {
+            const container = document.getElementById('canvas-container');
+            const dpr = window.devicePixelRatio || 1;
+            const width = container.clientWidth;
+            
+            // 19:10 해상도 정밀 고정 종횡비 공식 도입 (비율 왜곡 및 패 정렬 정교하게 고정)
+            const aspectRatio = GRID_COLS / GRID_ROWS; 
+            const height = width / aspectRatio;
+            
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+            ctx.scale(dpr, dpr);
+
+            // 가상 크기 설정 보정
+            tileWidth = width / GRID_COLS;
+            tileHeight = height / GRID_ROWS;
+
+            drawBoard();
+        }
+
+        // 게임 보드 판 생성기 (최초 실행 또는 새 게임 리셋용)
+        function initGameData() {
+            score = 0;
+            timeLeft = 300;
+            hintCount = 3;
+            shuffleCount = 3;
+            combo = 0;
+            lastMatchTime = 0;
+            selected = null;
+            laserLinePath = null;
+            particles = [];
+            stage = 1; // 1스테이지 초기화
+            isGameRunning = false; // 기본 로드 시 멈춤 상태 유지
+            document.getElementById('no-moves-banner').classList.add('hidden');
+            document.getElementById('forfeit-btn').classList.add('hidden'); // 포기 버튼 비활성화
+
+            buildStageMatrix();
+            updateDashboard();
+        }
+
+        // [개선사항 3] 실제 스테이지 그리드 배열을 새로 채우고 깔아주는 빌더 함수
+        function buildStageMatrix() {
+            selected = null;
+            laserLinePath = null;
+            
+            // 136개 에셋 배열 세팅
+            let pool = [];
+            for (let i = 0; i < EMOJIS.length; i++) {
+                for (let j = 0; j < 8; j++) {
+                    pool.push(EMOJIS[i]);
+                }
+            }
+
+            // 피셔-예이츠 랜덤 셔플
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+
+            // 그리드 생성 (가장자리 0번 통로 감싸기)
+            grid = [];
+            for (let r = 0; r < GRID_ROWS; r++) {
+                grid[r] = [];
+                for (let c = 0; c < GRID_COLS; c++) {
+                    if (r === 0 || r === GRID_ROWS - 1 || c === 0 || c === GRID_COLS - 1) {
+                        grid[r][c] = 0; // 가상 통로
+                    } else {
+                        grid[r][c] = pool.pop();
+                    }
+                }
+            }
+        }
+
+        // '게임 시작' 실행 공정
+        function startGame() {
+            isGameRunning = true;
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('forfeit-btn').classList.remove('hidden'); // 포기 버튼 보이기
+            sound.init(); // 브라우저 제스처 후 사운드 자극 활성화
+            startTimer();
+            checkGameState();
+        }
+
+        // 타이머 가동
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!isGameRunning) return;
+                timeLeft--;
+                document.getElementById('time-val').textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    endGame('timeout');
+                }
+            }, 1000);
+        }
+
+        // 실시간 계기판 동기화
+        function updateDashboard() {
+            document.getElementById('stage-val').textContent = stage;
+            document.getElementById('score-val').textContent = score;
+            document.getElementById('time-val').textContent = timeLeft;
+            document.getElementById('hint-stock').textContent = hintCount;
+            document.getElementById('shuffle-stock').textContent = shuffleCount;
+            document.getElementById('combo-val').textContent = combo;
+
+            // 남은 타일 개수 갱신
+            let activeCount = 0;
+            if (grid && grid.length >= GRID_ROWS) {
+                for (let r = 1; r <= ROWS; r++) {
+                    for (let c = 1; c <= COLS; c++) {
+                        if (grid[r][c] !== 0) activeCount++;
+                    }
+                }
+            }
+            document.getElementById('remain-val').textContent = activeCount;
+        }
+
+        // BFS 기반 3선 법칙 경로 확인 알고리즘
+        function findSichuanPath(r1, c1, r2, c2) {
+            if (grid[r1][c1] === 0 || grid[r2][c2] === 0) return null;
+            if (r1 === r2 && c1 === c2) return null;
+            if (grid[r1][c1] !== grid[r2][c2]) return null;
+
+            // BFS 탐색을 위한 거리 매트릭스 (r, c, 방향, 꺾임 횟수)
+            const queue = [];
+            // minTurns[row][col][direction] = turnCount
+            const minTurns = Array.from({ length: GRID_ROWS }, () => 
+                Array.from({ length: GRID_COLS }, () => Array(4).fill(Infinity))
+            );
+
+            // 상, 우, 하, 좌 (0, 1, 2, 3) 방향 벡터
+            const dr = [-1, 0, 1, 0];
+            const dc = [0, 1, 0, -1];
+
+            // 시작 좌표 기준 4방향 주입
+            for (let d = 0; d < 4; d++) {
+                let nr = r1 + dr[d];
+                let nc = c1 + dc[d];
+                if (nr >= 0 && nr < GRID_ROWS && nc >= 0 && nc < GRID_COLS) {
+                    if (grid[nr][nc] === 0 || (nr === r2 && nc === c2)) {
+                        minTurns[nr][nc][d] = 0;
+                        queue.push({
+                            r: nr, c: nc,
+                            dir: d,
+                            turns: 0,
+                            path: [{ r: r1, c: c1 }, { r: nr, c: nc }]
+                        });
+                    }
+                }
+            }
+
+            let bestPath = null;
+            let minBestTurns = Infinity;
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+
+                if (current.r === r2 && current.c === c2) {
+                    if (current.turns < minBestTurns) {
+                        minBestTurns = current.turns;
+                        bestPath = current.path;
+                    }
+                    continue;
+                }
+
+                if (current.turns > 2) continue; // 최대 꺾임 2회 제한 규격 통과
+
+                for (let d = 0; d < 4; d++) {
+                    let nr = current.r + dr[d];
+                    let nc = current.c + dc[d];
+
+                    if (nr >= 0 && nr < GRID_ROWS && nc >= 0 && nc < GRID_COLS) {
+                        if (grid[nr][nc] === 0 || (nr === r2 && nc === c2)) {
+                            const nextTurns = (d === current.dir) ? current.turns : current.turns + 1;
+                            if (nextTurns <= 2 && nextTurns < minTurns[nr][nc][d]) {
+                                minTurns[nr][nc][d] = nextTurns;
+                                queue.push({
+                                    r: nr, c: nc,
+                                    dir: d,
+                                    turns: nextTurns,
+                                    path: [...current.path, { r: nr, c: nc }]
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            return bestPath;
+        }
+
+        // 전체 필드 스캔 매칭 가능한 쌍 탐색
+        function scanAvailablePair() {
+            const list = [];
+            for (let r = 1; r <= ROWS; r++) {
+                for (let c = 1; c <= COLS; c++) {
+                    if (grid[r][c] !== 0) {
+                        list.push({ r, c, emoji: grid[r][c] });
+                    }
+                }
+            }
+
+            for (let i = 0; i < list.length; i++) {
+                for (let j = i + 1; j < list.length; j++) {
+                    if (list[i].emoji === list[j].emoji) {
+                        const path = findSichuanPath(list[i].r, list[i].c, list[j].r, list[j].c);
+                        if (path) {
+                            return { t1: list[i], t2: list[j], path };
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        // 매 판 이동 가능 상태 검증 제어
+        function checkGameState() {
+            let remain = 0;
+            for (let r = 1; r <= ROWS; r++) {
+                for (let c = 1; c <= COLS; c++) {
+                    if (grid[r][c] !== 0) remain++;
+                }
+            }
+
+            // [개선사항 3] 판을 완전히 비웠다면 다음 스테이지 진입 프로세스로 이관
+            if (remain === 0) {
+                transitionToNextStage();
+                return;
+            }
+
+            const activeMatch = scanAvailablePair();
+            if (!activeMatch) {
+                document.getElementById('no-moves-banner').classList.remove('hidden');
+            } else {
+                document.getElementById('no-moves-banner').classList.add('hidden');
+            }
+        }
+
+        // [요구사항 1] 무한 연속 스테이지 진입 (시간 및 힌트/셔플 개수를 강제 충전 또는 초기화하지 않고 그대로 완전히 유지)
+        function transitionToNextStage() {
+            sound.play('clear');
+            
+            // 스테이지 클리어 축하 고정 점수만 가중 연산
+            const stageBonus = stage * 500;
+            score += stageBonus;
+
+            showToast(`⭐ STAGE ${stage} 클리어! 종합 보너스 +${stageBonus}점!`);
+            
+            // 기존 남은 시간(timeLeft), 힌트 개수(hintCount), 셔플 개수(shuffleCount)를 완벽하게 승계
+            stage++;
+            
+            // 새 게임 보드판 설계 적용 및 계기판 즉시 갱신
+            buildStageMatrix();
+            updateDashboard();
+            checkGameState();
+        }
+
+        // 힌트 아이템 소모
+        function triggerHint() {
+            if (!isGameRunning || hintCount <= 0) return;
+            const target = scanAvailablePair();
+            if (target) {
+                hintCount--;
+                laserLinePath = target.path;
+                laserTimer = 40; // 화면 유지 기조
+                selected = { r: target.t1.r, c: target.t1.c };
+                sound.play('select');
+                updateDashboard();
+            } else {
+                showToast("현재 보드에 맞출 수 있는 패가 없습니다. 셔플을 구동하세요.");
+            }
+        }
+
+        // 셔플 아이템 소모
+        function triggerShuffle() {
+            if (!isGameRunning || shuffleCount <= 0) return;
+            
+            // 현재 남아 있는 패들만 모으기
+            const activeTiles = [];
+            for (let r = 1; r <= ROWS; r++) {
+                for (let c = 1; c <= COLS; c++) {
+                    if (grid[r][c] !== 0) activeTiles.push(grid[r][c]);
+                }
+            }
+
+            if (activeTiles.length === 0) return;
+
+            // 랜덤 셔플링
+            for (let i = activeTiles.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [activeTiles[i], activeTiles[j]] = [activeTiles[j], activeTiles[i]];
+            }
+
+            // 재배치
+            for (let r = 1; r <= ROWS; r++) {
+                for (let c = 1; c <= COLS; c++) {
+                    if (grid[r][c] !== 0) {
+                        grid[r][c] = activeTiles.pop();
+                    }
+                }
+            }
+
+            shuffleCount--;
+            sound.play('shuffle');
+            selected = null;
+            laserLinePath = null;
+            updateDashboard();
+            checkGameState();
+            showToast("보드를 완벽히 섞었습니다!");
+        }
+
+        // 게임 종료 및 포기 연동 처리 연산
+        function endGame(status) {
+            isGameRunning = false;
+            clearInterval(timerInterval);
+            document.getElementById('forfeit-btn').classList.add('hidden'); // 포기 버튼 해제
+
+            const scoreTitle = document.getElementById('modal-score-title');
+
+            if (status === 'timeout') {
+                sound.play('fail');
+                showToast("⏱️ 시간 종료! 게임오버 되었습니다.");
+                scoreTitle.innerHTML = `⏱️ 시간 초과 (최종 Stage ${stage})`;
+            } else if (status === 'forfeit') {
+                sound.play('fail');
+                showToast("🏳️ 게임을 포기했습니다. 현재 점수로 등록합니다.");
+                scoreTitle.innerHTML = `🏳️ 게임 포기 (최종 Stage ${stage})`;
+            }
+
+            document.getElementById('modal-final-score').textContent = score;
+            document.getElementById('modal-score').classList.remove('hidden');
+        }
+
+        // ==========================================
+        // 캔버스 드로잉 파이프라인
+        // ==========================================
+
+        function drawBoard() {
+            // 그리드가 초기화되기 전에 렌더링이 호출되는 에러 원천 차단
+            if (!grid || grid.length < GRID_ROWS) return;
+
+            const dpr = window.devicePixelRatio || 1;
+            const logicalWidth = canvas.width / dpr;
+            const logicalHeight = canvas.height / dpr;
+
+            // [잔상 해결 해결책 1] 고해상도(소수점 DPR 포함) 스크린에서 clearRect rounding 오작동을 해결하기 위해,
+            // 매 프레임 클리어 시 일시적으로 행렬을 리셋한 후 완벽히 물리 픽셀 크기로 물리 클리어(SetTransform(1))를 수행합니다.
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.restore();
+
+            // 미세 전경 바둑판 라인
+            ctx.strokeStyle = 'rgba(16, 185, 129, 0.03)';
+            ctx.lineWidth = 1;
+            for (let c = 0; c <= GRID_COLS; c++) {
+                ctx.beginPath();
+                ctx.moveTo(c * tileWidth, 0);
+                ctx.lineTo(c * tileWidth, logicalHeight); // [잔상 해결 해결책 2] 캔버스 물리 경계 초과 드로잉 방지 (논리 높이로 제한)
+                ctx.stroke();
+            }
+            for (let r = 0; r <= GRID_ROWS; r++) {
+                ctx.beginPath();
+                ctx.moveTo(0, r * tileHeight);
+                ctx.lineTo(logicalWidth, r * tileHeight); // [잔상 해결 해결책 2] 캔버스 물리 경계 초과 드로잉 방지 (논리 너비로 제한)
+                ctx.stroke();
+            }
+
+            // 마작 타일 렌더링 루프
+            for (let r = 1; r <= ROWS; r++) {
+                for (let c = 1; c <= COLS; c++) {
+                    const value = grid[r][c];
+                    if (value === 0) continue;
+
+                    const tx = c * tileWidth;
+                    const ty = r * tileHeight;
+                    const gap = 3;
+
+                    // 타일의 3D 높이 쉐도우 효과
+                    const shadowHeight = 4;
+                    const isSelected = selected && selected.r === r && selected.c === c;
+
+                    ctx.save();
+
+                    // 그림자 베이스 레이어
+                    ctx.fillStyle = '#0f172a';
+                    ctx.beginPath();
+                    ctx.roundRect(tx + gap, ty + gap + shadowHeight, tileWidth - gap * 2, tileHeight - gap * 2, 6);
+                    ctx.fill();
+
+                    // 타일 측면 (3D 두께 느낌)
+                    ctx.fillStyle = isSelected ? '#047857' : '#1e293b';
+                    ctx.beginPath();
+                    ctx.roundRect(tx + gap, ty + gap + 2, tileWidth - gap * 2, tileHeight - gap * 2 - 2, 6);
+                    ctx.fill();
+
+                    // 타일 상단 캡 페이스
+                    ctx.fillStyle = isSelected ? '#10b981' : '#334155';
+                    ctx.beginPath();
+                    ctx.roundRect(tx + gap, ty + gap, tileWidth - gap * 2, tileHeight - gap * 2 - shadowHeight, 6);
+                    ctx.fill();
+
+                    // 테두리 강조 드로잉
+                    ctx.strokeStyle = isSelected ? '#a7f3d0' : '#475569';
+                    ctx.lineWidth = isSelected ? 2 : 1;
+                    ctx.stroke();
+
+                    // 이모지 텍스트 인그레이빙
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = `bold ${Math.min(tileWidth, tileHeight) * 0.55}px Pretendard, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(value, tx + tileWidth / 2, ty + (tileHeight - shadowHeight) / 2);
+
+                    ctx.restore();
+                }
+            }
+
+            // 3선 법칙 연결 레이저 라인 폭사 효과
+            if (laserLinePath && laserTimer > 0) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.strokeStyle = `rgba(245, 158, 11, ${laserTimer / 40})`;
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                
+                // 네온 레이저 번짐 표현
+                ctx.shadowColor = '#f59e0b';
+                ctx.shadowBlur = 12;
+
+                for (let i = 0; i < laserLinePath.length; i++) {
+                    const pt = laserLinePath[i];
+                    const px = pt.c * tileWidth + tileWidth / 2;
+                    const py = pt.r * tileHeight + tileHeight / 2;
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.stroke();
+                ctx.restore();
+                laserTimer--;
+            }
+
+            // 실시간 입자들 갱신 및 렌더링
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.update();
+                p.draw(ctx);
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        // 통합 매 프레임 리프레시 루프 구동
+        function mainLoop() {
+            drawBoard();
+            requestAnimationFrame(mainLoop);
+        }
+
+        // 터치 및 마우스 포인팅 좌표 파싱 이벤트 통합 바인딩
+        function handleInteraction(clientX, clientY) {
+            if (!isGameRunning) return;
+
+            const rect = canvas.getBoundingClientRect();
+            // 반응형 뷰포트 비율 보정 공식 적용
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+
+            const c = Math.floor(x / tileWidth);
+            const r = Math.floor(y / tileHeight);
+
+            if (r <= 0 || r > ROWS || c <= 0 || c > COLS) return;
+            if (grid[r][c] === 0) return;
+
+            sound.init(); // 사운드 컨텍스트 초기화 유도
+
+            if (!selected) {
+                selected = { r, c };
+                sound.play('select');
+            } else {
+                if (selected.r === r && selected.c === c) {
+                    selected = null;
+                    sound.play('select');
+                    return;
+                }
+
+                // 3선 조건 합당 여부 검사
+                const path = findSichuanPath(selected.r, selected.c, r, c);
+                if (path) {
+                    // 매칭 성립 리드
+                    laserLinePath = path;
+                    laserTimer = 15;
+
+                    // 매칭된 타일 폭발 컬러 캡쳐
+                    const midX = c * tileWidth + tileWidth / 2;
+                    const midY = r * tileHeight + tileHeight / 2;
+                    const originX = selected.c * tileWidth + tileWidth / 2;
+                    const originY = selected.r * tileHeight + tileHeight / 2;
+
+                    // 폭발 입자들 주입
+                    for (let i = 0; i < 15; i++) {
+                        particles.push(new Particle(midX, midY, '#10b981'));
+                        particles.push(new Particle(originX, originY, '#f59e0b'));
+                    }
+
+                    // 콤보 점수 배율 보정식 가중 계산
+                    const now = Date.now();
+                    if (now - lastMatchTime < 3500) {
+                        combo++;
+                    } else {
+                        combo = 1;
+                    }
+                    lastMatchTime = now;
+
+                    const earnScore = 100 * combo;
+                    score += earnScore;
+
+                    // 보드판 상태 적용 소거
+                    grid[selected.r][selected.c] = 0;
+                    grid[r][c] = 0;
+
+                    selected = null;
+                    sound.play('match'); // [요구사항 2] 리팩토링된 "띠롱~" 사운드 플레이
+                    
+                    updateDashboard();
+                    checkGameState();
+                } else {
+                    // 타격 실패 분기
+                    selected = { r, c };
+                    sound.play('fail');
+                }
+            }
+        }
+
+        // 마우스 및 터치 이벤트 통합 바인딩
+        canvas.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            handleInteraction(e.clientX, e.clientY);
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            handleInteraction(touch.clientX, touch.clientY);
+        }, { passive: false });
+
+
+        // ==========================================
+        // FIREBASE INTERACTIVE PORTING
+        // ==========================================
+
+        async function initFirebaseSystem() {
+            try {
+                // [제약조건 3] 익명 인증 인프라 선 수립
+                await signInAnonymously(auth);
+                activeUser = auth.currentUser;
+                
+                // 데이터 실시간 경청 바인딩 가동
+                bindRealtimeRanking();
+            } catch (err) {
+                console.error("Firebase Auth & Database Pipeline Fail:", err);
+                showToast("서버 연결 실패. 오프라인 모드로 자동 보정됩니다.");
+            }
+        }
+
+        // [제약조건 3, RULE 2] 단순 쿼리 검색 후 프론트엔드 인메모리 정렬 수행
+        function bindRealtimeRanking() {
+            if (!activeUser) return;
+            const targetCollection = collection(db, ...DB_LEADERBOARD_TREE);
+
+            onSnapshot(targetCollection, (snapshot) => {
+                const listData = [];
+                snapshot.forEach((doc) => {
+                    listData.push({ docId: doc.id, ...doc.data() });
+                });
+
+                // Rule 2 준수를 위해 인메모리 완전 정렬 실시
+                listData.sort((a, b) => b.score - a.score);
+                const top10 = listData.slice(0, 10);
+
+                const container = document.getElementById('leaderboard-container');
+                container.innerHTML = '';
+
+                if (top10.length === 0) {
+                    container.innerHTML = '<div class="text-center text-slate-700 py-12">아직 기록이 존재하지 않습니다.<br>첫 랭커에 도전해 보세요!</div>';
+                    return;
+                }
+
+                top10.forEach((record, index) => {
+                    const isTop3 = index < 3;
+                    let rankBg = 'bg-slate-900 text-slate-500';
+                    let borderSkin = 'border-slate-900';
+                    if (index === 0) { rankBg = 'bg-gradient-to-br from-amber-400 to-yellow-600 text-slate-950 font-black'; borderSkin = 'border-amber-500/30 bg-amber-500/5'; }
+                    else if (index === 1) { rankBg = 'bg-gradient-to-br from-slate-300 to-slate-500 text-slate-950 font-bold'; borderSkin = 'border-slate-400/20'; }
+                    else if (index === 2) { rankBg = 'bg-gradient-to-br from-amber-600 to-amber-800 text-white font-bold'; borderSkin = 'border-amber-700/20'; }
+
+                    const card = document.createElement('div');
+                    card.className = `flex items-center justify-between p-2.5 rounded-xl border ${borderSkin} bg-slate-950/40 transition hover:scale-[1.02] duration-200`;
+                    card.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span class="w-5 h-5 rounded flex items-center justify-center font-orbitron text-[10px] ${rankBg}">${index + 1}</span>
+                            <span class="font-bold text-slate-300">${escapeHtml(record.name)}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-orbitron font-extrabold text-emerald-400">${record.score.toLocaleString()}</span>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            }, (error) => {
+                console.error("Firestore Listen Failed:", error);
+            });
+        }
+
+        // [제약조건 4] 랭크 점수 제출 비즈니스 제어 라우터
+        async function processSubmitScore() {
+            const nameInput = document.getElementById('nickname-input');
+            const cleanName = nameInput.value.trim();
+
+            if (!cleanName) {
+                showToast("⚠️ 정확한 닉네임을 기입하십시오.");
+                return;
+            }
+
+            if (!activeUser) {
+                showToast("⚠️ 비로그인 유저는 명예의 전당 등록이 차단됩니다.");
+                return;
+            }
+
+            const targetCollection = collection(db, ...DB_LEADERBOARD_TREE);
+            
+            try {
+                // 동명 닉네임 유무 조회
+                const checkSnapshot = await getDocs(targetCollection);
+                let isMatchExist = false;
+                let existingRecord = null;
+
+                checkSnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.name === cleanName) {
+                        isMatchExist = true;
+                        existingRecord = { docId: doc.id, ...data };
+                    }
+                });
+
+                if (isMatchExist) {
+                    if (score > existingRecord.score) {
+                        // 중복되었으나 이번 점수가 더 높은 상위 갱신 케이스 -> 커스텀 모달 노출분기 유도
+                        pendingSaveData = { name: cleanName, score: score, existId: existingRecord.docId };
+                        document.getElementById('modal-score').classList.add('hidden');
+                        document.getElementById('modal-conflict').classList.remove('hidden');
+                    } else {
+                        // 기존 점수가 더 낮거나 같다면 -> 별도 팝업 없이 신규 데이터로 바로 addDoc 처리
+                        await addDoc(targetCollection, {
+                            name: cleanName,
+                            score: score,
+                            createdAt: new Date().toISOString()
+                        });
+                        showToast("성공적으로 점수가 추가 등록되었습니다!");
+                        closeAllModals();
+                    }
+                } else {
+                    // 동일명이 존재하지 않는 순수 신규 레코드
+                    await addDoc(targetCollection, {
+                        name: cleanName,
+                        score: score,
+                        createdAt: new Date().toISOString()
+                    });
+                    showToast("최초 닉네임 기록 등록 성공!");
+                    closeAllModals();
+                }
+            } catch (err) {
+                console.error("Score Add Fail:", err);
+                showToast("서버 오류로 등록에 실패했습니다.");
+            }
+        }
+
+        // [제약조건 4 - 분기 1] 덮어쓰기 실행
+        async function commitOverwrite() {
+            if (!pendingSaveData.existId) return;
+            const targetDoc = doc(db, ...DB_LEADERBOARD_TREE, pendingSaveData.existId);
+
+            try {
+                await updateDoc(targetDoc, {
+                    score: pendingSaveData.score,
+                    createdAt: new Date().toISOString()
+                });
+                showToast("기존 최고 기록을 덮어써 갱신 완료했습니다!");
+                closeAllModals();
+            } catch (err) {
+                console.error("Overwrite Fail:", err);
+            }
+        }
+
+        // [제약조건 4 - 분기 2] 신규 데이터 독립 생성 등록
+        async function commitNewRecord() {
+            const targetCollection = collection(db, ...DB_LEADERBOARD_TREE);
+            try {
+                await addDoc(targetCollection, {
+                    name: pendingSaveData.name,
+                    score: pendingSaveData.score,
+                    createdAt: new Date().toISOString()
+                });
+                showToast("별도의 새로운 행으로 랭킹 추가 완료!");
+                closeAllModals();
+            } catch (err) {
+                console.error("New Addition Fail:", err);
+            }
+        }
+
+        // ==========================================
+        // UI 모달 / 알림 제어 제반 코드들
+        // ==========================================
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = "bg-slate-900 border border-emerald-500/30 text-emerald-400 text-xs px-4 py-3 rounded-xl shadow-2xl transition duration-300 transform translate-y-2 pointer-events-auto flex items-center gap-2 font-semibold";
+            toast.innerHTML = `<span>🔔</span> <span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // 모달 닫기 시 게임 리셋 및 대기 화면 회귀 연산
+        function closeAllModals() {
+            document.getElementById('modal-score').classList.add('hidden');
+            document.getElementById('modal-conflict').classList.add('hidden');
+            document.getElementById('nickname-input').value = '';
+            pendingSaveData = { name: '', score: 0, existId: null };
+
+            // 보드를 초기화하고 오버레이 스크린을 다시 활성화하여 준비
+            initGameData();
+            resizeCanvas(); // 화면 재조율 보정 동기화
+            document.getElementById('start-screen').classList.remove('hidden');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // 이벤트 결속화
+        document.getElementById('start-game-btn').addEventListener('click', startGame);
+        document.getElementById('hint-btn').addEventListener('click', triggerHint);
+        document.getElementById('shuffle-btn').addEventListener('click', triggerShuffle);
+        
+        // 게임 포기 트리거 바인딩
+        document.getElementById('forfeit-btn').addEventListener('click', () => {
+            if (isGameRunning) {
+                endGame('forfeit');
+            }
+        });
+        
+        const soundBtn = document.getElementById('sound-btn');
+        soundBtn.addEventListener('click', () => {
+            sound.enabled = !sound.enabled;
+            soundBtn.textContent = sound.enabled ? "🔊 사운드 On" : "🔇 사운드 Off";
+            soundBtn.className = sound.enabled 
+                ? "px-3.5 py-2 bg-slate-850 border border-slate-800 text-xs md:text-sm font-semibold rounded-xl transition flex items-center gap-1.5" 
+                : "px-3.5 py-2 bg-slate-900 border border-slate-950 text-slate-600 text-xs md:text-sm font-semibold rounded-xl transition flex items-center gap-1.5";
+        });
+
+        // 모달 전용 버튼 바인딩
+        document.getElementById('modal-cancel-btn').addEventListener('click', closeAllModals);
+        document.getElementById('modal-submit-btn').addEventListener('click', processSubmitScore);
+        
+        document.getElementById('conflict-overwrite-btn').addEventListener('click', commitOverwrite);
+        document.getElementById('conflict-new-btn').addEventListener('click', commitNewRecord);
+        document.getElementById('conflict-cancel-btn').addEventListener('click', closeAllModals);
+
+        // 창 크기 조절 이벤트 최적화
+        window.addEventListener('resize', resizeCanvas);
+
+        // 런타임 개시
+        window.onload = () => {
+            initGameData();        // 1. 게임 뼈대 및 데이터를 사전에 백그라운드로 구축합니다.
+            resizeCanvas();        // 2. 캔버스 해상도 정밀 조율 후 렌더링에 반영합니다.
+            initFirebaseSystem();  // 3. 파이어베이스 인증 루프 수립 및 리더보드 리슨을 수행합니다.
+            mainLoop();            // 4. 애니메이션 렌더 프레임 루프를 가동합니다.
+        };
+    </script>
+  <script defer src="/minigame/copyright-notice.js"></script>
+</body>
+</html>

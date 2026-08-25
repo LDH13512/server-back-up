@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오락실 스톱워치</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Orbitron', 'Share Tech Mono', monospace;
+            background-color: #020617;
+        }
+
+        .neon-glow-cyan {
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.5), inset 0 0 10px rgba(6, 182, 212, 0.2);
+            border: 1px solid rgba(6, 182, 212, 0.8);
+        }
+
+        .neon-glow-pink {
+            box-shadow: 0 0 15px rgba(236, 72, 153, 0.5), inset 0 0 10px rgba(236, 72, 153, 0.2);
+            border: 1px solid rgba(236, 72, 153, 0.8);
+        }
+
+        .neon-text-cyan {
+            text-shadow: 0 0 8px rgba(6, 182, 212, 0.8);
+        }
+
+        .neon-text-pink {
+            text-shadow: 0 0 8px rgba(236, 72, 153, 0.8);
+        }
+
+        .neon-text-green {
+            text-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(6, 182, 212, 0.4);
+            border-radius: 2px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(6, 182, 212, 0.8);
+        }
+    </style>
+  <script src="/_runtime/firebase-config?app=minigame"></script>
+  <meta name="author" content="게시판 운영자">
+  <meta name="copyright" content="© 2026 게시판">
+  <meta name="rights" content="AI 도구를 제작 보조로 활용해 운영자가 기획·구현·편집한 자체 콘텐츠">
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col justify-between selection:bg-cyan-500 selection:text-slate-950 overflow-x-hidden">
+
+    <!-- Custom Notification/Toast Overlay -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col space-y-3 pointer-events-none max-w-sm w-full"></div>
+
+    <!-- Header -->
+    <header class="border-b border-cyan-900/40 bg-slate-950/80 backdrop-blur-md p-4 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <span class="text-2xl font-black tracking-widest text-cyan-400 neon-text-cyan">스톱워치</span>
+            </div>
+            <div id="auth-status" class="text-xs text-slate-400 flex items-center space-x-2">
+                <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" id="status-dot"></span>
+                <span id="status-text" class="font-mono text-[11px] tracking-wide">동기화 초기화 중...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Grid Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch my-auto">
+        
+        <!-- Left & Center: Active Sandbox & Canvas -->
+        <div class="lg:col-span-2 flex flex-col space-y-4 justify-center">
+            
+            <!-- Game Console Outer Shell -->
+            <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 flex flex-col items-center justify-center relative backdrop-blur-md neon-glow-cyan">
+                <div class="absolute top-3 left-4 text-[10px] text-cyan-500/60 tracking-widest uppercase font-bold">Quantum Chronometer v3.0 [Dual-Round]</div>
+                
+                <!-- Canvas Area wrapper for adaptive sizing -->
+                <div class="w-full max-w-[560px] aspect-[16/10] relative mt-4">
+                    <canvas id="gameCanvas" class="w-full h-full bg-slate-950 rounded-xl border border-slate-900 shadow-2xl"></canvas>
+                </div>
+                
+                <!-- Main Action Button and controller -->
+                <div class="w-full max-w-[560px] mt-6 flex flex-col space-y-3">
+                    <button id="actionBtn" disabled class="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed font-black text-xl tracking-widest rounded-xl shadow-lg active:scale-[0.98] transition duration-150 uppercase border border-cyan-400/30">
+                        인증 대기 중...
+                    </button>
+                    <div class="flex justify-between items-center text-[11px] text-slate-500 px-1 font-mono">
+                        <span>[SPACEBAR] 키로도 작동 가능</span>
+                        <span id="audioToggleBtn" class="cursor-pointer hover:text-cyan-400 transition">🔇 사운드: 끔</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom User Score Submit Form -->
+            <div id="scoreFormContainer" class="hidden bg-slate-900/50 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-md animate-fade-in neon-glow-pink">
+                <h3 class="text-sm font-bold text-pink-500 neon-text-pink mb-3 tracking-widest uppercase">명예의 전당 종합 등록 (낮은 오차순)</h3>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="flex-grow relative">
+                        <input type="text" id="nicknameInput" maxlength="12" placeholder="닉네임 입력 (최대 12자)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-pink-500 transition duration-150 tracking-wider text-sm font-bold">
+                    </div>
+                    <button id="submitScoreBtn" class="bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-black px-6 py-3 rounded-xl transition duration-150 tracking-widest uppercase text-xs border border-pink-400/30 whitespace-nowrap">
+                        등록
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Real-time Cloud Leaderboard -->
+        <div class="bg-slate-900/30 border border-slate-800/60 rounded-2xl p-5 flex flex-col backdrop-blur-md h-[560px] lg:h-auto">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
+                <div>
+                    <h2 class="text-lg font-black text-cyan-400 neon-text-cyan tracking-wider uppercase">온라인 리더보드</h2>
+                    <p class="text-[10px] text-slate-500 font-mono tracking-tight">Real-time No-SQL Cloud Synced</p>
+                </div>
+                <span class="text-[10px] font-bold bg-cyan-950/80 text-cyan-400 border border-cyan-900 px-3 py-1 rounded-full uppercase tracking-wider">TOP 10</span>
+            </div>
+
+            <!-- Leaderboard Items -->
+            <div id="leaderboardContainer" class="flex-grow overflow-y-auto space-y-2 pr-1 text-sm">
+                <div class="text-center text-slate-500 my-auto pt-32 animate-pulse font-mono text-xs">
+                    클라우드 데이터베이스 초기 로드 중...
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Custom Decision Modal for Duplicate Entry -->
+    <div id="duplicateModal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-pink-500/50 rounded-2xl max-w-md w-full p-6 shadow-2xl relative animate-scale-up neon-glow-pink">
+            <div class="text-pink-500 neon-text-pink text-lg font-black mb-2 uppercase tracking-widest flex items-center space-x-2">
+                <span>⚠️ 중복 식별자 검출됨</span>
+            </div>
+            <p class="text-slate-300 text-xs leading-relaxed mb-4 font-mono">
+                입력하신 닉네임 [<span id="modalNickname" class="text-cyan-400 font-bold"></span>]은(는) 이미 리더보드에 존재합니다. 이전 성적과 이번 성적을 비교하여 저장 규칙을 선택해 주세요.
+            </p>
+            <!-- 세부 점수 정보 비교 레이아웃 -->
+            <div id="modalDetailText" class="text-slate-400 text-xs font-mono mb-6 bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-1">
+                <!-- JavaScript 동적 주입 -->
+            </div>
+            <div class="flex flex-col space-y-2">
+                <button id="modalOverwriteBtn" class="w-full py-3 bg-pink-950/40 hover:bg-pink-900/60 text-pink-400 border border-pink-700/60 text-xs font-bold tracking-widest rounded-xl transition duration-150 uppercase">
+                    1) 기존 기록 덮어쓰기 (Update)
+                </button>
+                <button id="modalNewRecordBtn" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold tracking-widest rounded-xl transition duration-150 uppercase">
+                    2) 별개의 독립 신규 기록 생성 (Insert)
+                </button>
+                <button id="modalCancelBtn" class="w-full py-2.5 text-[11px] text-slate-500 hover:text-slate-400 text-center tracking-widest mt-2 uppercase font-mono">
+                    처리 취소
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-900/60 bg-slate-950/80 p-4 text-center text-[10px] text-slate-600 tracking-widest font-mono uppercase">
+        © 2026 10SEC CHRONOMETRICS. PROTRACTED UNDER FIRESTORE SECURITY SCHEMATICS.
+    </footer>
+
+    <!-- Firebase Script Configuration -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, setDoc, query, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Firebase Config Base64 디코딩 및 시스템 내재화 구축
+        const minigameConfig = JSON.parse(atob(_mg_fbc));
+
+        const app = initializeApp(minigameConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Global Variables provided by platform
+        const appId = typeof __app_id !== 'undefined' ? __app_id : '10sec';
+
+        // 가변 경로 바인딩 트리 구조 준수
+        const dbPathTree = ['artifacts', appId, 'public', 'data', 'leaderboard'];
+
+        // UI 및 캔버스 관련 참조 획득
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const actionBtn = document.getElementById("actionBtn");
+        const scoreFormContainer = document.getElementById("scoreFormContainer");
+        const nicknameInput = document.getElementById("nicknameInput");
+        const submitScoreBtn = document.getElementById("submitScoreBtn");
+        const duplicateModal = document.getElementById("duplicateModal");
+        const modalNickname = document.getElementById("modalNickname");
+        const modalOverwriteBtn = document.getElementById("modalOverwriteBtn");
+        const modalNewRecordBtn = document.getElementById("modalNewRecordBtn");
+        const modalCancelBtn = document.getElementById("modalCancelBtn");
+        const audioToggleBtn = document.getElementById("audioToggleBtn");
+
+        // 게임 엔진 상태 변수
+        let gameState = "READY"; 
+        let startTime = 0;
+        let elapsed = 0;
+        let r1Elapsed = 0;
+        let r2Elapsed = 0;
+        let finalScore = 0; // 1R 오차 + 2R 오차 종합 점수
+        let animationFrameId = null;
+        let lastFrameTime = 0;
+        let soundEnabled = false; // 처음에는 음소거로 시작
+        let globalUser = null;
+        let leaderboardData = []; 
+
+        // 이모티콘 혼란 방해물 시스템 구조체
+        let distractions = [];
+        let lastSpawnTime = 0;
+        let nextSpawnDelay = 150; 
+        const emojiPool = ["🤪", "⏱️", "🌀", "❓", "🚨", "🤡", "👻", "💣", "💀", "🛸", "🔔", "💥", "🎲", "👁️", "📢", "⚡", "😈", "👹", "👾", "🎪", "🎭"];
+
+        // 중복닉네임 충돌 해결을 위한 메모리 구조체
+        let pendingSubmission = null;
+
+        // Web Audio API 오디오 합성 신디사이저
+        let audioCtx = null;
+        function playBeep(frequency, duration, type = "sine") {
+            if (!soundEnabled) return;
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === "suspended") {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = type;
+                osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+                
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.warn("Audio Context init blocked or failed.", e);
+            }
+        }
+
+        audioToggleBtn.addEventListener("click", () => {
+            soundEnabled = !soundEnabled;
+            audioToggleBtn.textContent = soundEnabled ? "🔊 사운드: 켬" : "🔇 사운드: 끔";
+            showToast("사운드 설정이 변경되었습니다.", "info");
+        });
+
+        // custom toast/alert system
+        function showToast(message, type = "info") {
+            const container = document.getElementById("toastContainer");
+            const toast = document.createElement("div");
+            
+            const bgClass = type === "success" ? "border-emerald-500/50 bg-emerald-950/90 text-emerald-300" :
+                            type === "error" ? "border-rose-500/50 bg-rose-950/90 text-rose-300" :
+                            "border-cyan-500/50 bg-slate-900/90 text-cyan-300";
+            
+            toast.className = `p-4 rounded-xl border ${bgClass} shadow-xl text-xs font-semibold tracking-wide flex items-center justify-between space-x-2 animate-fade-in transition duration-300 pointer-events-auto`;
+            toast.innerHTML = `
+                <span>${message}</span>
+                <button class="text-slate-400 hover:text-white font-bold ml-2">×</button>
+            `;
+            
+            toast.querySelector("button").onclick = () => toast.remove();
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add("opacity-0");
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // High-DPI Canvas Support 및 동적 리사이즈 리스너
+        function resizeCanvas() {
+            const rect = canvas.parentNode.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
+
+        // 고성능 60fps 게이밍 렌더 루프
+        function gameLoop(timestamp) {
+            if (!lastFrameTime) lastFrameTime = timestamp;
+            const dt = timestamp - lastFrameTime;
+            lastFrameTime = timestamp;
+
+            const isRunning = (gameState === "RUNNING_R1" || gameState === "RUNNING_R2");
+
+            if (isRunning) {
+                elapsed = (performance.now() - startTime) / 1000;
+                // 퍼블릭 가이드 3초 이후부터 혼돈의 무작위 이모티콘 쇄도 업데이트 시작
+                if (elapsed > 3) {
+                    const w = canvas.width / window.devicePixelRatio;
+                    const h = canvas.height / window.devicePixelRatio;
+                    updateDistractions(dt, w, h);
+                } else {
+                    distractions = [];
+                }
+            } else {
+                distractions = [];
+            }
+
+            renderCanvas();
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // 혼돈의 이모티콘 물리 시뮬레이션 및 수명 통제 시스템
+        function updateDistractions(dt, w, h) {
+            const now = performance.now();
+            if (now - lastSpawnTime > nextSpawnDelay) {
+                distractions.push({
+                    x: Math.random() * (w - 100) + 50,
+                    y: Math.random() * (h - 100) + 50,
+                    emoji: emojiPool[Math.floor(Math.random() * emojiPool.length)],
+                    size: Math.random() * 32 + 24, 
+                    rotation: Math.random() * Math.PI * 2,
+                    rotSpeed: (Math.random() - 0.5) * 6, 
+                    scale: 0.1,
+                    maxScale: Math.random() * 1.6 + 0.8,
+                    alpha: 0,
+                    state: 'fade-in', 
+                    timer: 0,
+                    lifetime: Math.random() * 600 + 300 
+                });
+                lastSpawnTime = now;
+                nextSpawnDelay = Math.random() * 200 + 80; 
+            }
+
+            for (let i = distractions.length - 1; i >= 0; i--) {
+                const d = distractions[i];
+                d.timer += dt;
+                d.rotation += d.rotSpeed * (dt / 1000);
+
+                if (d.state === 'fade-in') {
+                    d.alpha += (dt / 120); 
+                    d.scale += (d.maxScale - 0.1) * (dt / 120);
+                    if (d.alpha >= 1) {
+                        d.alpha = 1;
+                        d.scale = d.maxScale;
+                        d.state = 'active';
+                        d.timer = 0;
+                    }
+                } else if (d.state === 'active') {
+                    if (d.timer > d.lifetime) {
+                        d.state = 'fade-out';
+                        d.timer = 0;
+                    }
+                } else if (d.state === 'fade-out') {
+                    d.alpha -= (dt / 120);
+                    d.scale -= d.maxScale * (dt / 120);
+                    if (d.alpha <= 0) {
+                        distractions.splice(i, 1);
+                    }
+                }
+            }
+        }
+
+        // 이모티콘 캔버스 무대 배치 그리기 모듈
+        function drawDistractions() {
+            distractions.forEach(d => {
+                ctx.save();
+                ctx.translate(d.x, d.y);
+                ctx.rotate(d.rotation);
+                ctx.scale(d.scale, d.scale);
+                ctx.globalAlpha = d.alpha;
+                ctx.font = `${d.size}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(d.emoji, 0, 0);
+                ctx.restore();
+            });
+            ctx.globalAlpha = 1.0; 
+        }
+
+        function renderCanvas() {
+            const w = canvas.width / window.devicePixelRatio;
+            const h = canvas.height / window.devicePixelRatio;
+
+            // Clear Background
+            ctx.fillStyle = "#020617";
+            ctx.fillRect(0, 0, w, h);
+
+            // Tech Grid Lines
+            ctx.strokeStyle = "rgba(15, 23, 42, 0.7)";
+            ctx.lineWidth = 1;
+            const gridSize = 25;
+            for (let x = 0; x < w; x += gridSize) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+            }
+            for (let y = 0; y < h; y += gridSize) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+            }
+
+            const isRunning = (gameState === "RUNNING_R1" || gameState === "RUNNING_R2");
+
+            // 공개 영역 3초 이후 배경원 소멸
+            if (!isRunning || elapsed <= 3) {
+                ctx.beginPath();
+                ctx.arc(w / 2, h / 2, 95, 0, Math.PI * 2);
+                ctx.strokeStyle = "rgba(30, 41, 59, 0.4)";
+                ctx.lineWidth = 4;
+                ctx.stroke();
+            }
+
+            // 공개 영역 3초 이후 전진 궤적 링 소멸
+            if (isRunning) {
+                if (elapsed <= 3) {
+                    ctx.beginPath();
+                    let arcEnd = (elapsed / 3) * Math.PI * 2 - Math.PI / 2;
+                    ctx.strokeStyle = "#06b6d4"; 
+                    ctx.arc(w / 2, h / 2, 95, -Math.PI / 2, arcEnd);
+                    ctx.lineWidth = 6;
+                    ctx.stroke();
+                }
+            } else if (gameState === "STOPPED") {
+                ctx.beginPath();
+                ctx.arc(w / 2, h / 2, 95, 0, Math.PI * 2);
+                ctx.strokeStyle = parseFloat(finalScore) <= 0.15 ? "#10b981" : "#ef4444";
+                ctx.lineWidth = 6;
+                ctx.stroke();
+            }
+
+            // 3초 이후 활성화된 무작위 이모티콘 렌더 
+            if (isRunning && elapsed > 3) {
+                drawDistractions();
+            }
+
+            // Central Metrics Displays
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            if (gameState === "READY") {
+                ctx.font = "bold 13px 'Orbitron', sans-serif";
+                ctx.fillStyle = "#06b6d4";
+                ctx.fillText("ROUND 1 / TARGET: 10.000s", w / 2, h / 2 - 38);
+
+                ctx.font = "bold 38px 'Share Tech Mono', monospace";
+                ctx.fillStyle = "#ffffff";
+                ctx.fillText("10.000s", w / 2, h / 2 + 5);
+
+                ctx.font = "bold 9px 'Orbitron', sans-serif";
+                ctx.fillStyle = "rgba(148, 163, 184, 0.5)";
+                ctx.fillText("TAP SCREEN OR SPACEBAR TO START 1R", w / 2, h / 2 + 45);
+            } 
+            else if (gameState === "RUNNING_R1") {
+                ctx.font = "bold 11px 'Orbitron', sans-serif";
+                ctx.fillStyle = elapsed <= 3 ? "#06b6d4" : "#ec4899";
+                ctx.fillText(elapsed <= 3 ? "ROUND 1: PUBLIC STAGE (0-3s)" : "⚠️ ROUND 1: BLIND + DISTRACTION!", w / 2, h / 2 - 40);
+
+                ctx.font = "bold 44px 'Share Tech Mono', monospace";
+                if (elapsed <= 3) {
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillText(elapsed.toFixed(3) + "s", w / 2, h / 2 + 5);
+                } else {
+                    ctx.fillStyle = "#ec4899";
+                    ctx.fillText("???.???s", w / 2, h / 2 + 5);
+                }
+            } 
+            else if (gameState === "INTERMISSION") {
+                ctx.font = "bold 12px 'Orbitron', sans-serif";
+                ctx.fillStyle = "#10b981";
+                ctx.fillText("ROUND 1 COMPLETE!", w / 2, h / 2 - 48);
+
+                ctx.font = "bold 18px 'Share Tech Mono', monospace";
+                ctx.fillStyle = "#ffffff";
+                ctx.fillText(`1R Record: ${r1Elapsed.toFixed(3)}s`, w / 2, h / 2 - 18);
+                
+                ctx.font = "bold 13px 'Orbitron', sans-serif";
+                ctx.fillStyle = "#94a3b8";
+                ctx.fillText(`Error: ${Math.abs(r1Elapsed - 10).toFixed(3)}s`, w / 2, h / 2 + 8);
+
+                ctx.font = "bold 10px 'Orbitron', sans-serif";
+                ctx.fillStyle = "#06b6d4";
+                ctx.fillText("READY FOR ROUND 2 (TARGET: 20.000s)", w / 2, h / 2 + 38);
+                
+                ctx.font = "bold 8px 'Orbitron', sans-serif";
+                ctx.fillStyle = "rgba(148, 163, 184, 0.4)";
+                ctx.fillText("CLICK THE BUTTON TO INITIATE ROUND 2", w / 2, h / 2 + 58);
+            }
+            else if (gameState === "RUNNING_R2") {
+                ctx.font = "bold 11px 'Orbitron', sans-serif";
+                ctx.fillStyle = elapsed <= 3 ? "#06b6d4" : "#ec4899";
+                ctx.fillText(elapsed <= 3 ? "ROUND 2: PUBLIC STAGE (0-3s)" : "⚠️ ROUND 2: BLIND + DISTRACTION!", w / 2, h / 2 - 40);
+
+                ctx.font = "bold 44px 'Share Tech Mono', monospace";
+                if (elapsed <= 3) {
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillText(elapsed.toFixed(3) + "s", w / 2, h / 2 + 5);
+                } else {
+                    ctx.fillStyle = "#ec4899";
+                    ctx.fillText("???.???s", w / 2, h / 2 + 5);
+                }
+            }
+            else if (gameState === "STOPPED") {
+                ctx.font = "bold 13px 'Orbitron', sans-serif";
+                ctx.fillStyle = "#e2e8f0";
+                ctx.fillText("CHRONOMETRIC GRAND FINAL", w / 2, h / 2 - 54);
+
+                ctx.font = "12px 'Share Tech Mono', monospace";
+                ctx.fillStyle = "#94a3b8";
+                ctx.fillText(`Round 1 (Target 10s): ${r1Elapsed.toFixed(3)}s (Err: ${Math.abs(r1Elapsed - 10).toFixed(3)}s)`, w / 2, h / 2 - 24);
+                ctx.fillText(`Round 2 (Target 20s): ${r2Elapsed.toFixed(3)}s (Err: ${Math.abs(r2Elapsed - 20).toFixed(3)}s)`, w / 2, h / 2 - 4);
+
+                ctx.font = "bold 18px 'Orbitron', sans-serif";
+                ctx.fillStyle = "#ec4899";
+                ctx.fillText(`TOTAL ERROR: ${finalScore}s`, w / 2, h / 2 + 24);
+
+                ctx.font = "bold 9px 'Orbitron', sans-serif";
+                ctx.fillStyle = "rgba(6, 182, 212, 0.8)";
+                ctx.fillText("RANKING SUBMISSION REGISTER OPENED", w / 2, h / 2 + 48);
+            }
+        }
+
+        // 듀얼 라운드 전환 시스템
+        function handleAction() {
+            if (gameState === "READY") {
+                // Round 1 가동 시작
+                playBeep(600, 0.1, "triangle");
+                gameState = "RUNNING_R1";
+                scoreFormContainer.classList.add("hidden");
+                actionBtn.textContent = "STOP (Target: 10.000s)";
+                actionBtn.className = "w-full py-4 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-black text-xl tracking-widest rounded-xl shadow-lg active:scale-[0.98] transition duration-150 uppercase border border-pink-400/30";
+                startTime = performance.now();
+                lastFrameTime = performance.now(); 
+                elapsed = 0;
+                distractions = [];
+            } 
+            else if (gameState === "RUNNING_R1") {
+                // Round 1 완료 및 인터미션 돌입
+                r1Elapsed = (performance.now() - startTime) / 1000;
+                gameState = "INTERMISSION";
+                const r1Error = Math.abs(r1Elapsed - 10);
+                
+                playBeep(880, 0.2, "sine");
+                showToast(`[Round 1 완료] 오차: ${r1Error.toFixed(3)}s`, "success");
+
+                actionBtn.textContent = "START ROUND 2 (20.000s)";
+                actionBtn.className = "w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-xl tracking-widest rounded-xl shadow-lg active:scale-[0.98] transition duration-150 uppercase border border-cyan-400/30";
+            } 
+            else if (gameState === "INTERMISSION") {
+                // Round 2 가동 시작
+                playBeep(600, 0.1, "triangle");
+                gameState = "RUNNING_R2";
+                actionBtn.textContent = "STOP (Target: 20.000s)";
+                actionBtn.className = "w-full py-4 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-black text-xl tracking-widest rounded-xl shadow-lg active:scale-[0.98] transition duration-150 uppercase border border-pink-400/30";
+                startTime = performance.now();
+                lastFrameTime = performance.now();
+                elapsed = 0;
+                distractions = [];
+            }
+            else if (gameState === "RUNNING_R2") {
+                // Round 2 완료 및 점수 합산 계산식 발동
+                r2Elapsed = (performance.now() - startTime) / 1000;
+                gameState = "STOPPED";
+                
+                const r1Error = Math.abs(r1Elapsed - 10);
+                const r2Error = Math.abs(r2Elapsed - 20);
+                
+                // 두 라운드 오차 점수를 소수점 3자리까지 더해 최종 점수 결정
+                finalScore = (r1Error + r2Error).toFixed(3);
+
+                if (parseFloat(finalScore) === 0) {
+                    playBeep(1200, 0.8, "sine"); 
+                    showToast("⚡ PERFECT! 이론상 불가능한 두 라운드 연속 0초 오차 달성!", "success");
+                } else if (parseFloat(finalScore) <= 0.12) {
+                    playBeep(880, 0.4, "sine");
+                    showToast(`👍 경이로운 신체 감각! 합산 오차: ${finalScore}s`, "success");
+                } else {
+                    playBeep(330, 0.3, "sawtooth");
+                    showToast(`실험 통제 종료! 합산 오차: ${finalScore}s`, "info");
+                }
+
+                actionBtn.textContent = "CHRONO RE-BOOT";
+                actionBtn.className = "w-full py-4 bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 text-slate-100 font-black text-xl tracking-widest rounded-xl active:scale-[0.98] transition duration-150 uppercase border border-slate-600";
+                scoreFormContainer.classList.remove("hidden");
+                nicknameInput.focus();
+            } 
+            else if (gameState === "STOPPED") {
+                // 시스템 리셋
+                playBeep(440, 0.05, "sine");
+                gameState = "READY";
+                actionBtn.textContent = "START ROUND 1 (10s)";
+                actionBtn.className = "w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-xl tracking-widest rounded-xl shadow-lg active:scale-[0.98] transition duration-150 uppercase border border-cyan-400/30";
+                scoreFormContainer.classList.add("hidden");
+                elapsed = 0;
+                r1Elapsed = 0;
+                r2Elapsed = 0;
+                finalScore = 0;
+                distractions = [];
+            }
+        }
+
+        // 제어 이벤트 리스너 통합 (키보드, 클릭, 터치 제스처)
+        window.addEventListener("keydown", (e) => {
+            if (e.code === "Space") {
+                if (document.activeElement === nicknameInput) return;
+                e.preventDefault();
+                if (!actionBtn.disabled) handleAction();
+            }
+        });
+        
+        canvas.addEventListener("mousedown", (e) => {
+            e.preventDefault();
+            if (!actionBtn.disabled) handleAction();
+        });
+        canvas.addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            if (!actionBtn.disabled) handleAction();
+        });
+
+        actionBtn.addEventListener("click", handleAction);
+
+        // Firebase 익명 인증 및 Auth 흐름 가동
+        async function runSecurityPipeline() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    try {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } catch (tokenErr) {
+                        console.warn("Custom token validation failed, falling back to anonymous auth.", tokenErr);
+                        await signInAnonymously(auth);
+                    }
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Auth Pipeline Interrupted:", err);
+                document.getElementById("status-dot").className = "inline-block w-2.5 h-2.5 rounded-full bg-rose-500";
+                document.getElementById("status-text").textContent = "보안 인증 실패";
+                showToast("데이터베이스 인증 단계에서 오류가 발생했습니다.", "error");
+            }
+        }
+
+        // 복잡한 DB 쿼리 절대 배제 원칙 준수 실시간 동기화
+        function initFirestoreDatabase() {
+            onAuthStateChanged(auth, (user) => {
+                if (!user) {
+                    globalUser = null;
+                    return;
+                }
+                globalUser = user;
+                document.getElementById("status-dot").className = "inline-block w-2.5 h-2.5 rounded-full bg-emerald-500";
+                document.getElementById("status-text").textContent = "온라인 노드 활성화됨";
+                actionBtn.disabled = false;
+                actionBtn.textContent = "START ROUND 1 (10s)";
+
+                const baseColRef = collection(db, ...dbPathTree);
+
+                onSnapshot(baseColRef, (snapshot) => {
+                    const localDocs = [];
+                    snapshot.forEach((snapDoc) => {
+                        const data = snapDoc.data();
+                        localDocs.push({ id: snapDoc.id, ...data });
+                    });
+
+                    // 메모리 내 오차 합산 정렬 처리 (오차가 적을수록 우위, 데이터는 완전 영구 유지됨)
+                    localDocs.sort((a, b) => parseFloat(a.score) - parseFloat(b.score));
+                    leaderboardData = localDocs;
+
+                    renderLeaderboard(localDocs.slice(0, 10));
+                }, (error) => {
+                    console.error("Firestore onSnapshot error:", error);
+                    showToast("리더보드를 동기화할 수 없습니다.", "error");
+                });
+            });
+        }
+
+        function renderLeaderboard(top10) {
+            const container = document.getElementById("leaderboardContainer");
+            container.innerHTML = "";
+
+            if (top10.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-slate-600 py-16 font-mono text-xs">
+                        활성화된 클라우드 데이터 노드가 없습니다.<br>첫 랭킹의 주인공이 되어보세요!
+                    </div>
+                `;
+                return;
+            }
+
+            top10.forEach((item, index) => {
+                const rank = index + 1;
+                const isTop1 = rank === 1;
+                const card = document.createElement("div");
+                card.className = `flex justify-between items-center p-3 rounded-xl border transition duration-300 backdrop-blur-sm ${
+                    isTop1 ? 'bg-cyan-950/40 border-cyan-500/50' : 'bg-slate-900/40 border-slate-800/80 hover:border-slate-700/80'
+                }`;
+
+                let rankBadge = `<span class="font-bold text-slate-500 w-6 text-center text-xs font-mono">${rank}</span>`;
+                if (rank === 1) rankBadge = `<span class="text-center w-6 text-base neon-text-cyan">🏆</span>`;
+                else if (rank === 2) rankBadge = `<span class="text-center w-6 text-base text-slate-300">🥈</span>`;
+                else if (rank === 3) rankBadge = `<span class="text-center w-6 text-base text-amber-600">🥉</span>`;
+
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3 overflow-hidden">
+                        ${rankBadge}
+                        <span class="font-bold tracking-wider truncate text-slate-200 text-xs">${escapeHtml(item.nickname)}</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="font-bold font-mono text-xs ${isTop1 ? 'text-cyan-400' : 'text-slate-300'}">${parseFloat(item.score).toFixed(3)}s</span>
+                        <div class="text-[9px] text-slate-500 font-mono tracking-tighter">TOTAL ERROR GAP</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
+        // 중복 닉네임 유효성 검사 및 분기 로직 (이미지 image_ac5b2a.png 의 다중 등록 현상 해결)
+        submitScoreBtn.addEventListener("click", async () => {
+            const nickname = nicknameInput.value.trim();
+            if (!nickname) {
+                showToast("닉네임을 정확히 입력해주세요.", "error");
+                return;
+            }
+
+            if (!globalUser) {
+                showToast("데이터베이스 인증 처리가 아직 완료되지 않았습니다.", "error");
+                return;
+            }
+
+            const currentScoreNum = parseFloat(finalScore);
+
+            try {
+                submitScoreBtn.disabled = true;
+                submitScoreBtn.textContent = "주입 검증 중...";
+
+                // 리더보드에서 중복 명의 완벽 검출
+                const matchedEntries = leaderboardData.filter(item => item.nickname === nickname);
+
+                if (matchedEntries.length > 0) {
+                    // 동일한 이름의 기존 점수 중 가장 낮은 오차 점수와 ID 확보
+                    let bestExistingScore = Infinity;
+                    let existingDocId = null;
+
+                    matchedEntries.forEach(item => {
+                        const s = parseFloat(item.score);
+                        if (s < bestExistingScore) {
+                            bestExistingScore = s;
+                            existingDocId = item.id;
+                        }
+                    });
+
+                    // 중복 닉네임이 존재하면 무조건 유저에게 팝업(모달)을 띄워 선택권을 부여함
+                    pendingSubmission = {
+                        existingId: existingDocId,
+                        nickname: nickname,
+                        score: currentScoreNum,
+                        existingScore: bestExistingScore
+                    };
+                    
+                    // 모달 세부 비교 텍스트 업데이트
+                    modalNickname.textContent = nickname;
+                    document.getElementById("modalDetailText").innerHTML = `
+                        기존 최고 기록 오차: <span class="text-pink-400 font-bold">${bestExistingScore.toFixed(3)}초</span><br>
+                        현재 새로운 기록 오차: <span class="text-cyan-400 font-bold">${currentScoreNum.toFixed(3)}초</span>
+                        ${currentScoreNum < bestExistingScore ? '<br><span class="text-emerald-400 font-bold">✨ 새로운 신기록입니다!</span>' : '<br><span class="text-slate-500 font-bold">⚠️ 기존 기록이 더 우수합니다.</span>'}
+                    `;
+                    
+                    duplicateModal.classList.remove("hidden");
+                    return; 
+                }
+
+                // 중복 닉네임이 아예 없으면 즉시 신규 등록
+                await executeAddRecord(nickname, currentScoreNum);
+                submitSuccess();
+
+            } catch (err) {
+                console.error("Cloud Submission Failure:", err);
+                showToast("서버 기록 전송에 실패했습니다.", "error");
+                submitScoreBtn.disabled = false;
+                submitScoreBtn.textContent = "등록";
+            }
+        });
+
+        async function executeAddRecord(name, score) {
+            const baseColRef = collection(db, ...dbPathTree);
+            await addDoc(baseColRef, {
+                nickname: name,
+                score: score,
+                timestamp: serverTimestamp()
+            });
+        }
+
+        async function executeUpdateRecord(docId, name, score) {
+            const targetDocRef = doc(db, ...dbPathTree, docId);
+            await setDoc(targetDocRef, {
+                nickname: name,
+                score: score,
+                timestamp: serverTimestamp()
+            }, { merge: true });
+        }
+
+        function submitSuccess() {
+            showToast("기록이 안정적으로 명예의 전당 노드에 주입되었습니다.", "success");
+            scoreFormContainer.classList.add("hidden");
+            nicknameInput.value = "";
+            submitScoreBtn.disabled = false;
+            submitScoreBtn.textContent = "등록";
+            playBeep(980, 0.2, "sine");
+        }
+
+        // 커스텀 분기 의사결정 모달 제어기 바인딩
+        modalOverwriteBtn.addEventListener("click", async () => {
+            if (!pendingSubmission) return;
+            try {
+                closeModal();
+                submitScoreBtn.textContent = "덮어쓰기 중...";
+                await executeUpdateRecord(pendingSubmission.existingId, pendingSubmission.nickname, pendingSubmission.score);
+                submitSuccess();
+            } catch (e) {
+                console.error(e);
+                showToast("서버 덮어쓰기 기록 처리에 실패했습니다.", "error");
+                submitScoreBtn.disabled = false;
+                submitScoreBtn.textContent = "등록";
+            }
+        });
+
+        modalNewRecordBtn.addEventListener("click", async () => {
+            if (!pendingSubmission) return;
+            try {
+                closeModal();
+                submitScoreBtn.textContent = "신규 등록 중...";
+                await executeAddRecord(pendingSubmission.nickname, pendingSubmission.score);
+                submitSuccess();
+            } catch (e) {
+                console.error(e);
+                showToast("서버 신규 기록 처리에 실패했습니다.", "error");
+                submitScoreBtn.disabled = false;
+                submitScoreBtn.textContent = "등록";
+            }
+        });
+
+        function closeModal() {
+            duplicateModal.classList.add("hidden");
+        }
+        modalCancelBtn.addEventListener("click", () => {
+            closeModal();
+            submitScoreBtn.disabled = false;
+            submitScoreBtn.textContent = "등록";
+            pendingSubmission = null;
+        });
+
+        // 파이프라인 트리거 구동
+        runSecurityPipeline();
+        initFirestoreDatabase();
+        gameLoop();
+    </script>
+  <script defer src="/minigame/copyright-notice.js"></script>
+</body>
+</html>

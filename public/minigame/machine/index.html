@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>오락실 머신 - 슬롯 덱빌더 로그라이트</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@300;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans KR', sans-serif; background-color: #030712; }
+    .font-cyber { font-family: 'Orbitron', sans-serif; }
+    .crt-effect { position: relative; overflow: hidden; }
+    .crt-effect::after {
+      content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+      background-size: 100% 4px, 6px 100%; pointer-events: none; z-index: 20;
+    }
+    .neon-border-magenta { box-shadow: 0 0 10px #ec4899, inset 0 0 5px #ec4899; }
+    .neon-border-cyan { box-shadow: 0 0 10px #06b6d4, inset 0 0 5px #06b6d4; }
+    .neon-border-yellow { box-shadow: 0 0 12px #eab308, inset 0 0 6px #eab308; }
+    .neon-text-cyan { text-shadow: 0 0 8px #06b6d4; }
+    .neon-text-magenta { text-shadow: 0 0 8px #ec4899; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #111827; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #ec4899; }
+  </style>
+  <script src="/_runtime/firebase-config?app=minigame"></script>
+  <meta name="author" content="게시판 운영자">
+  <meta name="copyright" content="© 2026 게시판">
+  <meta name="rights" content="AI 도구를 제작 보조로 활용해 운영자가 기획·구현·편집한 자체 콘텐츠">
+</head>
+<body class="text-gray-100 flex flex-col min-h-screen">
+
+  <header class="border-b border-gray-800 bg-gray-950/80 backdrop-blur-md sticky top-0 z-40 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center neon-border-magenta animate-pulse">
+          <span class="text-xl">🎰</span>
+        </div>
+        <div>
+          <h1 class="text-xl md:text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 font-cyber">SLOT MACHINE</h1>
+          <p class="text-xs text-gray-400">슬롯머신 덱빌딩 로그라이트</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btn-guide" class="px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-700 text-sm border border-gray-700 transition">📖 머신 설명서</button>
+        <button id="btn-mute" class="px-3 py-1.5 rounded bg-red-950 text-red-400 text-sm border border-red-800 transition">🔇 소리 끔</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <section class="lg:col-span-3 bg-gray-950/80 border border-gray-800 rounded-2xl p-4 flex flex-col lg:h-[820px] min-h-[500px]">
+      <div class="border-b border-gray-800 pb-3 mb-4">
+        <div class="flex justify-between items-center">
+          <h2 class="text-lg font-bold font-cyber text-pink-500 flex items-center gap-2">🏆 HALL OF FAME</h2>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-pink-950/50 text-pink-400 border border-pink-800 font-cyber">LIVE</span>
+        </div>
+      </div>
+      <div id="leaderboard-container" class="flex-1 space-y-2 overflow-y-auto max-h-[400px] lg:max-h-[600px] pr-1">
+        <div class="animate-pulse space-y-2">
+          <div class="h-10 bg-gray-900 rounded border border-gray-800"></div>
+          <div class="h-10 bg-gray-900 rounded border border-gray-800"></div>
+          <div class="h-10 bg-gray-900 rounded border border-gray-800"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lg:col-span-6 flex flex-col items-center">
+      <div class="w-full bg-zinc-900 border-4 border-zinc-800 rounded-3xl overflow-hidden crt-effect shadow-2xl relative neon-border-cyan flex flex-col">
+        <div class="bg-black py-3 px-6 border-b-4 border-zinc-800 flex justify-between items-center">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+            <span class="font-cyber font-bold text-xs tracking-widest text-red-500">MACHINE v2.9.1</span>
+          </div>
+          <div class="text-right"><span class="text-[11px] text-cyan-400 font-cyber tracking-widest">CREDIT: 99</span></div>
+        </div>
+
+        <div class="p-4 bg-gray-950 flex flex-col gap-4">
+          <div class="grid grid-cols-4 gap-2 bg-black border border-cyan-500/30 rounded-xl p-3 text-center">
+            <div class="border-r border-gray-800/80">
+              <p class="text-[10px] text-gray-400">보유 코인</p>
+              <p id="hud-coins" class="text-lg md:text-xl font-black text-yellow-400 font-cyber">10</p>
+            </div>
+            <div class="border-r border-gray-800/80">
+              <p class="text-[10px] text-gray-400">달성 빚 (렌트)</p>
+              <p id="hud-rent" class="text-lg md:text-xl font-black text-red-500 font-cyber">25</p>
+            </div>
+            <div class="border-r border-gray-800/80">
+              <p class="text-[10px] text-gray-400">남은 기한</p>
+              <p id="hud-spins" class="text-lg md:text-xl font-black text-cyan-400 font-cyber">5 <span class="text-xs">회</span></p>
+            </div>
+            <div>
+              <p class="text-[10px] text-gray-400">스테이지</p>
+              <p id="hud-stage" class="text-lg md:text-xl font-black text-purple-400 font-cyber">1</p>
+            </div>
+          </div>
+
+          <div class="relative w-full aspect-square md:aspect-[5/4] bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
+            <canvas id="game-canvas" class="w-full h-full block cursor-pointer"></canvas>
+            <div id="canvas-overlay" class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-6 text-center transition-all duration-300 pointer-events-none opacity-0">
+              <h3 id="overlay-title" class="text-3xl font-black font-cyber text-pink-500 mb-2">STAGE CLEAR</h3>
+              <p id="overlay-desc" class="text-sm text-gray-300 mb-4">목표 빚을 상환했습니다.</p>
+              <span class="text-xs text-pink-400 font-bold animate-pulse font-cyber">⚡ 화면을 클릭하여 즉시 스킵</span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between gap-3 mt-1">
+            <button id="btn-spin" class="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-pink-600 hover:to-indigo-700 font-black tracking-widest text-lg font-cyber transition transform active:scale-95 disabled:opacity-50 disabled:pointer-events-none neon-border-magenta text-white">
+              🎰 SPIN MACHINE
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-zinc-800 p-4 border-t-4 border-zinc-700 flex justify-around items-center">
+          <div class="w-12 h-12 rounded-full bg-red-600 border-4 border-zinc-900 shadow-inner flex items-center justify-center cursor-pointer active:bg-red-700 active:scale-95 transition-all" id="deco-joy">
+            <div class="w-6 h-6 rounded-full bg-red-500"></div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-8 h-8 rounded-full bg-yellow-500 border-2 border-zinc-900 active:scale-95 cursor-pointer"></div>
+            <div class="w-8 h-8 rounded-full bg-cyan-500 border-2 border-zinc-900 active:scale-95 cursor-pointer"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lg:col-span-3 bg-gray-950/80 border border-gray-800 rounded-2xl p-4 flex flex-col lg:h-[820px] min-h-[500px]">
+      <div class="border-b border-gray-800 pb-3 mb-4">
+        <h2 class="text-lg font-bold font-cyber text-cyan-400 flex items-center gap-2">🗂️ MY DECK INVENTORY</h2>
+        <p class="text-xs text-gray-400 mt-1">현재 머신 안에 장착된 심볼 목록입니다.</p>
+        <p class="text-xs text-cyan-400/80 mt-1">심볼 수: <span id="deck-count" class="font-cyber font-bold">0</span>개 (최소 20개 자동보정)</p>
+      </div>
+
+      <div id="deck-container" class="grid grid-cols-5 gap-x-2 gap-y-1 content-start flex-1 overflow-y-auto pt-4 px-1.5 pb-2 mb-4"></div>
+
+      <div class="pt-2 border-t border-gray-800">
+        <div class="bg-gray-900/60 p-3 rounded-lg border border-gray-800">
+          <h3 class="text-xs font-bold text-pink-400 mb-1.5 flex items-center gap-1">💡 추천 시너지 가이드:</h3>
+            <div class="mb-4 bg-gray-900/60 border border-red-500/30 rounded-xl p-3 shadow-inner">
+              <h3 class="text-xs font-bold text-red-400 mb-2 flex items-center gap-1.5 font-cyber"><span>💣</span> 최근 폭파 로그 (최대 3개)</h3>
+              <div id="destruction-log" class="text-[10px] text-gray-400 h-[64px] overflow-y-auto space-y-1 pr-1">
+                <span class="text-gray-500 italic block text-center py-4">아직 폭파 제거된 카드가 없습니다.</span>
+            </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="modal-draft" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+    <div class="bg-gray-900 border border-pink-500/40 rounded-3xl max-w-lg w-full p-6 neon-border-magenta text-center relative">
+      <div class="mb-4">
+        <span class="text-3xl">✨</span>
+        <h2 class="text-2xl font-black font-cyber text-pink-500 mt-1">CHOOSE YOUR SYMBOL</h2>
+        <p class="text-xs text-gray-400 mt-1">덱에 추가할 강력한 심볼을 선택하십시오.</p>
+      </div>
+      
+      <div class="relative inline-block mb-2 z-50">
+        <button id="btn-view-deck-hover" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-xs font-bold border border-gray-700 rounded-xl transition text-cyan-400 cursor-pointer">
+          🔍 내 덱 보기 (마우스를 올리세요)
+        </button>
+        <div id="deck-preview-popover" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-80 max-h-60 overflow-y-auto bg-gray-950/95 border border-cyan-500/40 rounded-xl p-3 shadow-2xl hidden grid grid-cols-4 gap-2 text-left backdrop-blur-md">
+        </div>
+      </div>
+
+      <div id="draft-choices" class="grid grid-cols-3 gap-3 my-6"></div>
+      <div class="flex justify-center gap-4">
+        <button id="btn-reroll-draft" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-sm font-bold border border-cyan-500 transition disabled:opacity-40 disabled:pointer-events-none text-white cursor-pointer">
+          🎲 리롤하기 (<span id="draft-reroll-count">0</span>회)
+        </button>
+        <button id="btn-skip-draft" class="px-6 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-sm font-bold border border-gray-700 transition hover:text-yellow-400">
+          패스하고 +2 코인 받기 🪙
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-gameover" class="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+    <div class="bg-gray-900 border-2 border-red-500 rounded-3xl max-w-md w-full p-6 text-center neon-border-cyan">
+      <h2 class="text-4xl font-black font-cyber text-red-500 tracking-wider">GAME OVER</h2>
+      <p class="text-sm text-gray-400 mt-1">DEBT DEADLINE을 맞추지 못했습니다...</p>
+      <div class="my-6 p-4 bg-black/60 rounded-2xl border border-gray-800 space-y-2">
+        <div class="flex justify-between items-center text-sm">
+          <span class="text-gray-400">최종 누적 점수:</span>
+          <span id="go-score" class="font-black text-yellow-400 font-cyber text-xl">0 점</span>
+        </div>
+        <div class="flex justify-between items-center text-sm">
+          <span class="text-gray-400">생존 라운드:</span>
+          <span id="go-stage" class="font-black text-cyan-400 font-cyber text-lg">Stage 1</span>
+        </div>
+      </div>
+      <div class="space-y-4">
+        <div class="text-left">
+          <label class="block text-xs text-gray-400 font-bold mb-1.5" for="input-nickname">랭킹 등록 닉네임</label>
+          <input type="text" id="input-nickname" maxlength="8" placeholder="익명의 갬블러" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-center text-white font-bold tracking-widest focus:outline-none focus:border-pink-500">
+        </div>
+        <button id="btn-submit-score" class="w-full py-3.5 bg-gradient-to-r from-pink-500 to-indigo-600 hover:from-pink-600 hover:to-indigo-700 rounded-xl font-bold font-cyber text-white transition tracking-wide shadow-lg shadow-pink-500/20">
+          랭킹 등록하기 🏆
+        </button>
+        <button id="btn-restart" class="w-full py-3 bg-gray-800 hover:bg-gray-700 text-sm font-bold text-gray-300 rounded-xl transition">다시 도전하기 🔄</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-conflict" class="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden transition-all duration-300">
+    <div class="bg-gray-900 border border-yellow-500/40 rounded-3xl max-w-md w-full p-6 neon-border-cyan text-center">
+      <div class="mb-4">
+        <span class="text-4xl">⚠️</span>
+        <h2 class="text-2xl font-black text-yellow-400 font-cyber mt-2">NICKNAME CONFLICT</h2>
+        <p class="text-sm text-gray-300 mt-2">이미 명예의 전당에 <span id="conflict-name" class="text-pink-500 font-black"></span> 님이 존재합니다!</p>
+        <p class="text-xs text-gray-400 mt-1">기존 등록 점수: <span id="conflict-old" class="font-bold text-gray-300"></span> 점<br>신규 달성 점수: <span id="conflict-new" class="font-bold text-yellow-400"></span> 점</p>
+      </div>
+      <div class="flex flex-col gap-3 my-6">
+        <button id="btn-conflict-overwrite" class="py-3 px-4 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white font-bold rounded-xl text-sm transition">기존 최고 기록 덮어쓰기 (Update)</button>
+        <button id="btn-conflict-new" class="py-3 px-4 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-bold rounded-xl text-sm transition">별개의 신규 기록으로 동시 등록 (Add New)</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-guide" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+    <div class="bg-gray-900 border border-cyan-500/40 rounded-3xl max-w-2xl w-full p-6 neon-border-cyan flex flex-col max-h-[85vh]">
+      <div class="border-b border-gray-800 pb-3 mb-4">
+        <h2 class="text-2xl font-black text-cyan-400 font-cyber">🎰 머신 설명서</h2>
+        <p class="text-xs text-gray-400">머신에 장착할 수 있는 전체 심볼 도감입니다.</p>
+      </div>
+      <div id="guide-rules-list" class="overflow-y-auto space-y-4 pr-1 text-sm text-gray-300 leading-relaxed text-left flex-1">
+        <div>
+          <h3 class="text-pink-400 font-bold text-sm mb-1.5">🎮 슬롯머신 기본 조작법</h3>
+          <p class="text-xs text-gray-400">매 스핀마다 무작위로 돌아가는 슬롯 심볼들이 고유의 기본 수익 코인을 지불합니다.</p>
+        </div>
+        
+        <div class="border-t border-gray-800 pt-3">
+          <h3 class="text-yellow-400 font-bold text-sm mb-1.5">🌟 스테이지 클리어 특전 및 리롤 시스템</h3>
+          <ul class="text-xs text-gray-400 list-disc list-inside space-y-1">
+            <li><strong>매 스테이지 상환 보상</strong>: DeadLine 목표 금액을 상환하고 다음 스테이지로 진화할 때마다, 새로운 카드를 무료로 새로고침할 수 있는 <span class="text-cyan-400 font-bold">🎲 리롤권이 무조건 +1회씩 충전</span>됩니다.</li>
+            <li><strong>4의 배수 스테이지 진입 기념 확정 특전</strong>: 매 4의 배수 스테이지(<span class="text-yellow-400 font-bold">Stage 4, 8, 12, 16 ...</span>) 정식 스핀 개시 전 최초로 주어지는 카드 드래프트 단계에서는 3가지 선택지가 무조건 <span class="text-yellow-400 font-bold">👑 전설(Legendary) 등급 카드들로만 100% 확정</span> 출력됩니다. (이 상태에서 리롤을 돌려도 전설 카드 풀 내부에서만 변경됩니다.)</li>
+          </ul>
+        </div>
+
+        <div class="border-t border-gray-800 pt-3">
+          <h3 class="text-cyan-400 font-bold text-sm mb-3">📋 전체 심볼 도감</h3>
+          <div id="synergy-guide-container" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs"></div>
+        </div>
+      </div>
+      <button id="btn-close-guide" class="mt-6 w-full py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-xl transition">확인했습니다</button>
+    </div>
+  </div>
+
+  <footer class="mt-auto py-4 text-center border-t border-gray-900 bg-gray-950 text-xs text-gray-500">
+    <div class="max-w-7xl mx-auto px-4"><p>© 2026 SLOT MACHINE - CYBERPUNK CASINO DECKBUILDER. All Rights Reserved.</p></div>
+  </footer>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, collection, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    import { SYMBOL_TYPES, SYNERGY_RULES } from './symbols.js';
+
+    const minigameConfig = JSON.parse(atob(_mg_fbc));
+
+    const app = initializeApp(minigameConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = 'machine';
+    const leaderboardPath = ['artifacts', appId, 'public', 'data', 'leaderboard'];
+
+    let currentUser = null;
+    let localLeaderboard = [];
+
+    class SoundController {
+      // ⚙️ 생성자 내부 기본 음소거 상태를 true(Muted)로 변경 완결
+      constructor() { this.ctx = null; this.muted = true; } 
+      init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+      playTone(freq, type, duration, vol = 0.1) {
+        if (this.muted || !this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.00001, this.ctx.currentTime + duration);
+          osc.connect(gain); gain.connect(this.ctx.destination);
+          osc.start(); osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {}
+      }
+      playSpin() { this.init(); this.playTone(300, 'sawtooth', 0.15, 0.08); setTimeout(() => this.playTone(450, 'sawtooth', 0.15, 0.08), 80); }
+      playCoin() { this.init(); this.playTone(987.77, 'sine', 0.1, 0.1); setTimeout(() => this.playTone(1318.51, 'sine', 0.25, 0.1), 80); }
+      playHatch() { this.init(); this.playTone(600, 'triangle', 0.2, 0.1); setTimeout(() => this.playTone(1200, 'triangle', 0.3, 0.1), 100); }
+      playEat() { this.init(); this.playTone(220, 'square', 0.15, 0.12); setTimeout(() => this.playTone(110, 'square', 0.2, 0.12), 100); }
+      playExplosion() { this.init(); this.playTone(150, 'sawtooth', 0.4, 0.2); setTimeout(() => this.playTone(85, 'sawtooth', 0.5, 0.25), 60); }
+      playGameOver() { this.init(); this.playTone(300, 'sawtooth', 0.3, 0.15); setTimeout(() => this.playTone(180, 'sawtooth', 0.5, 0.15), 250); }
+      playCycleClear() { this.init(); [523.25, 659.25, 783.99, 1046.50].forEach((n, i) => setTimeout(() => this.playTone(n, 'sine', 0.3, 0.1), i * 120)); }
+    }
+    const sound = new SoundController();
+
+    function generateInitialDeck() {
+      const guaranteed = ['monkey', 'cat', 'dwarf', 'bear', 'goblin'];
+      const basePool = ['coin', 'milk', 'banana', 'honey', 'beer'];
+      const deck = [...guaranteed];
+      for (let i = 0; i < 8; i++) deck.push(basePool[Math.floor(Math.random() * basePool.length)]);
+      return deck;
+    }
+
+    let state = {
+      coins: 10, totalCoinsEarned: 10, rentTarget: 25, spinsRemaining: 5, stage: 1,
+      deck: generateInitialDeck(), grid: [], spinResults: [], particles: [],
+      isSpinning: false, selectedDraftIndex: null, floatingTexts: [], piggySavings: 0, destroyedByBombs: [],
+      rerolls: 0 
+    };
+
+    const getRentForStage = (stage) => {
+      const baseRents = [0, 25, 75, 150, 260, 420, 600, 850, 1150, 1500, 2000, 2600, 3400, 4300, 5500];
+      if (stage < baseRents.length) return baseRents[stage];
+      return baseRents[baseRents.length - 1] + (stage - baseRents.length + 1) * 1200;
+    };
+
+    async function initFirebaseAndSync() {
+      try {
+        await signInAnonymously(auth);
+        onAuthStateChanged(auth, (user) => { if (user) { currentUser = user; setupRealtimeLeaderboard(); } });
+      } catch (e) { console.error(e); }
+    }
+
+    function setupRealtimeLeaderboard() {
+      if (!currentUser) return;
+      const leaderboardCol = collection(db, ...leaderboardPath);
+      onSnapshot(leaderboardCol, (snapshot) => {
+        const records = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          records.push({ id: docSnap.id, ...data });
+        });
+        records.sort((a, b) => b.score !== a.score ? b.score - a.score : a.timestamp - b.timestamp);
+        localLeaderboard = records;
+        renderLeaderboardUI(records.slice(0, 10));
+      });
+    }
+
+    function renderLeaderboardUI(records) {
+      const container = document.getElementById('leaderboard-container');
+      if (records.length === 0) {
+        container.innerHTML = `<div class="h-40 flex flex-col items-center justify-center border border-dashed border-gray-800 rounded-xl text-gray-500 text-xs"><span>첫 도전자가 되어보세요!</span></div>`;
+        return;
+      }
+      container.innerHTML = records.map((rec, idx) => {
+        let medal = '', rankStyle = 'text-gray-400', bgStyle = 'bg-gray-900/40 border-gray-800';
+        if (idx === 0) { medal = '🥇'; rankStyle = 'text-yellow-400 font-extrabold'; bgStyle = 'bg-yellow-950/20 border-yellow-800/60 neon-border-cyan'; }
+        else if (idx === 1) { medal = '🥈'; rankStyle = 'text-gray-300 font-bold'; bgStyle = 'bg-slate-900/40 border-slate-700/60'; }
+        else if (idx === 2) { medal = '🥉'; rankStyle = 'text-amber-600 font-bold'; }
+        return `
+          <div class="flex items-center justify-between p-3 rounded-xl border ${bgStyle} transition hover:border-pink-500/50">
+            <div class="flex items-center gap-2.5">
+              <span class="w-6 text-center text-sm font-cyber ${rankStyle}">${medal || (idx + 1)}</span>
+              <div>
+                <p class="text-sm font-black text-gray-100 tracking-wider">${escapeHtml(rec.nickname)}</p>
+                <p class="text-[9px] text-gray-500">${new Date(rec.timestamp).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-xs font-cyber font-bold text-yellow-400">${rec.score.toLocaleString()} 점</p>
+              <p class="text-[9px] text-cyan-400 font-cyber">Stage ${rec.stage}</p>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function escapeHtml(str) { return str ? str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') : ''; }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initFirebaseAndSync(); initCanvas(); syncHUD(); updateDeckUI(); renderSynergyGuide(); updateDestructionLogUI(); requestAnimationFrame(loop);
+    });
+
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const ROWS = 4; const COLS = 5;
+    let cardWidth = 0, cardHeight = 0;
+
+    function initCanvas() {
+      const resize = () => {
+        const dpr = window.devicePixelRatio || 1; const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr; canvas.height = rect.height * dpr; ctx.scale(dpr, dpr);
+        cardWidth = rect.width / COLS; cardHeight = rect.height / ROWS;
+      };
+      resize(); window.addEventListener('resize', resize); buildMockGrid();
+    }
+
+    function buildMockGrid() {
+      state.grid = [];
+      for (let r = 0; r < ROWS; r++) {
+        const row = [];
+        for (let c = 0; c < COLS; c++) row.push({ id: 'empty', offsetY: 0, opacity: 1, pulse: 0, winHighlight: false, floatingText: '' });
+        state.grid.push(row);
+      }
+    }
+
+    function syncHUD() {
+      document.getElementById('hud-coins').innerText = state.coins;
+      document.getElementById('hud-rent').innerText = state.rentTarget;
+      document.getElementById('hud-spins').innerText = state.spinsRemaining;
+      document.getElementById('hud-stage').innerText = state.stage;
+    }
+
+    function updateDeckUI() {
+      const counts = {}; state.deck.forEach(s => counts[s] = (counts[s] || 0) + 1);
+      const container = document.getElementById('deck-container'); if (!container) return;
+      document.getElementById('deck-count').innerText = state.deck.length;
+
+      container.innerHTML = Object.entries(counts).map(([symId, count]) => {
+        const sym = SYMBOL_TYPES[symId]; if (!sym) return '';
+        let rarityBorder = 'border-gray-800 hover:border-cyan-500';
+        if (sym.rarity === 'legendary') rarityBorder = 'border-yellow-500 hover:border-yellow-400';
+        else if (sym.rarity === 'rare') rarityBorder = 'border-purple-500 hover:border-pink-500';
+        else if (sym.rarity === 'special') rarityBorder = 'border-rose-500 hover:border-rose-400 neon-border-magenta';
+        return `
+          <div class="relative group flex flex-col items-center justify-center h-16 bg-gray-900 border ${rarityBorder} rounded-xl transition cursor-help" title="${sym.name} [${sym.rarity.toUpperCase()}]: ${sym.desc}">
+            <span class="text-xl mb-0.5">${sym.emoji}</span>
+            <span class="text-[9px] text-gray-400 truncate max-w-full text-center px-0.5 tracking-tighter">${sym.name}</span>
+            <span class="absolute -top-1 -right-1 px-1.5 py-0.5 bg-cyan-500 text-black text-[8px] font-black rounded-full leading-none font-cyber shadow">${count}</span>
+          </div>`;
+      }).join('');
+    }
+
+    window.updateDestructionLogUI = function() {
+      const logContainer = document.getElementById('destruction-log'); if (!logContainer) return;
+      if (!state.destroyedByBombs || state.destroyedByBombs.length === 0) {
+        logContainer.innerHTML = `<span class="text-gray-500 italic block text-center py-4">아직 폭파 제거된 카드가 없습니다.</span>`; return;
+      }
+      logContainer.innerHTML = state.destroyedByBombs.map(item => `
+        <div class="flex justify-between items-center text-[10px] bg-red-950/20 px-2.5 py-1 rounded border border-red-900/30 animate-pulse">
+          <span class="text-red-300 font-bold">${item.emoji} ${item.name}</span>
+          <span class="text-[9px] text-gray-500 font-cyber">${new Date(item.timestamp).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+        </div>`).join('');
+    };
+
+    function loop() { updateParticles(); updateFloatingTexts(); draw(); requestAnimationFrame(loop); }
+    function updateParticles() { state.particles = state.particles.filter(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life -= 1; return p.life > 0; }); }
+    function createCoinsParticles(x, y, count = 10) {
+      for (let i = 0; i < count; i++) state.particles.push({ x, y, vx: (Math.random() - 0.5) * 6, vy: -Math.random() * 5 - 2, life: 40 + Math.random() * 20, size: 4 + Math.random() * 6, color: '#facc15' });
+    }
+    function createExplosionParticles(x, y, count = 20) {
+      const colors = ['#f97316', '#ef4444', '#facc15', '#ffffff'];
+      for (let i = 0; i < count; i++) state.particles.push({ x, y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8 - 1, life: 30 + Math.random() * 20, size: 4 + Math.random() * 6, color: colors[Math.floor(Math.random() * colors.length)] });
+    }
+    function updateFloatingTexts() { state.floatingTexts = state.floatingTexts.filter(ft => { ft.y -= 0.8; ft.life -= 0.02; return ft.life > 0; }); }
+    function spawnFloatingText(text, x, y, color = '#facc15') { state.floatingTexts.push({ text, x, y, color, life: 1.0 }); }
+
+    function draw() {
+      const rect = canvas.getBoundingClientRect(); const W = rect.width; const H = rect.height;
+      ctx.clearRect(0, 0, W, H); ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+      for (let c = 1; c < COLS; c++) { ctx.beginPath(); ctx.moveTo(c * cardWidth, 0); ctx.lineTo(c * cardWidth, H); ctx.stroke(); }
+      for (let r = 1; r < ROWS; r++) { ctx.beginPath(); ctx.moveTo(0, r * cardHeight); ctx.lineTo(W, r * cardHeight); ctx.stroke(); }
+
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const cell = state.grid[r]?.[c]; if (!cell) continue;
+          const symDef = SYMBOL_TYPES[cell.id] || SYMBOL_TYPES.empty;
+          const cx = c * cardWidth; const cy = r * cardHeight + cell.offsetY;
+          ctx.save(); ctx.translate(cx, cy);
+          if (cell.winHighlight) {
+            const pulse = 0.5 + Math.sin(Date.now() / 100) * 0.5;
+            ctx.fillStyle = `rgba(236, 72, 153, ${0.12 + pulse * 0.18})`; ctx.fillRect(2, 2, cardWidth - 4, cardHeight - 4);
+            ctx.shadowColor = '#ec4899'; ctx.shadowBlur = 10 + pulse * 14;
+            ctx.strokeStyle = `rgba(236, 72, 153, ${0.7 + pulse * 0.3})`; ctx.lineWidth = 2.5 + pulse * 2.5; ctx.strokeRect(2, 2, cardWidth - 4, cardHeight - 4);
+            ctx.shadowBlur = 0;
+          } else {
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.4)'; ctx.fillRect(2, 2, cardWidth - 4, cardHeight - 4);
+            ctx.strokeStyle = '#334155'; ctx.strokeRect(2, 2, cardWidth - 4, cardHeight - 4);
+          }
+          ctx.font = '28px "Apple Color Emoji", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          if (cell.winHighlight) {
+            ctx.save(); ctx.translate(cardWidth / 2, cardHeight / 2 - 8);
+            const sizePulse = 1.0 + (Math.sin(Date.now() / 80) * 0.08); ctx.scale(sizePulse, sizePulse);
+            ctx.fillText(symDef.emoji || '❌', 0, 0); ctx.restore();
+          } else { ctx.fillText(symDef.emoji || '❌', cardWidth / 2, cardHeight / 2 - 8); }
+          ctx.font = 'bold 9px "Noto Sans KR", sans-serif'; ctx.fillStyle = cell.winHighlight ? '#ffffff' : '#94a3b8';
+          ctx.fillText(symDef.name || '', cardWidth / 2, cardHeight / 2 + 18); ctx.restore();
+        }
+      }
+      state.floatingTexts.forEach(ft => {
+        ctx.save(); ctx.globalAlpha = ft.life; ctx.fillStyle = ft.color; ctx.font = 'black 13px "Orbitron", sans-serif'; ctx.textAlign = 'center'; ctx.fillText(ft.text, ft.x, ft.y); ctx.restore();
+      });
+      state.particles.forEach(p => {
+        ctx.save(); ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      });
+    }
+
+    async function executeSpin() {
+      if (state.isSpinning) return; state.isSpinning = true; document.getElementById('btn-spin').disabled = true;
+      let drawPool = [...state.deck]; while (drawPool.length < 20) drawPool.push('empty');
+      drawPool = shuffle(drawPool);
+      let frames = 0; const spinDuration = 35;
+      const interval = setInterval(() => {
+        frames++; sound.playSpin();
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            const keys = Object.keys(SYMBOL_TYPES);
+            state.grid[r][c] = { id: keys[Math.floor(Math.random() * keys.length)], offsetY: Math.sin(frames + c) * 8, winHighlight: false };
+          }
+        }
+        if (frames >= spinDuration) { clearInterval(interval); finalizeSpinResults(drawPool.slice(0, 20)); }
+      }, 40);
+    }
+
+    function finalizeSpinResults(finalSymbols) {
+      let index = 0;
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) state.grid[r][c] = { id: finalSymbols[index++] || 'empty', offsetY: 0, winHighlight: false };
+      }
+      calculateMatchesAndPayout();
+    }
+
+    function calculateMatchesAndPayout() {
+      let spinScore = 0; const itemsToRemove = []; const itemsToAdd = [];
+      const getAdjacents = (r, c) => {
+        const dirs = [[-1,-1], [-1,0], [-1,1], [0,-1], [0,1], [1,-1], [1,0], [1,1]]; const list = [];
+        dirs.forEach(([dr, dc]) => {
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) list.push({ r: nr, c: nc, id: state.grid[nr][nc].id || 'empty' });
+        });
+        return list;
+      };
+
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const cell = state.grid[r][c]; if (!cell) continue;
+          const type = cell.id || 'empty'; const def = SYMBOL_TYPES[type] || SYMBOL_TYPES['empty'];
+          if (type === 'empty' || itemsToRemove.includes(`${r}_${c}`)) continue;
+
+          let payoutBonus = def.payout || 0; let cellTriggered = false; const adjs = getAdjacents(r, c);
+          const applicableRules = SYNERGY_RULES.filter(rule => rule.trigger === type);
+
+          applicableRules.forEach(rule => {
+            if (rule.type === 'CONSUME') {
+              const targetFood = adjs.find(a => a.id === rule.target && !itemsToRemove.includes(`${a.r}_${a.c}`));
+              if (targetFood) {
+                payoutBonus += rule.bonus; cellTriggered = true; itemsToRemove.push(`${targetFood.r}_${targetFood.c}`);
+                state.grid[targetFood.r][targetFood.c].winHighlight = true;
+                spawnFloatingText(rule.message, c * cardWidth + cardWidth/2, r * cardHeight + 20, rule.color);
+                if (rule.sound === 'eat') sound.playEat();
+              }
+            }
+            else if (rule.type === 'TRANSFORM') {
+              if (Math.random() < rule.chance) {
+                cellTriggered = true; itemsToRemove.push(`${r}_${c}`); itemsToAdd.push(rule.into);
+                spawnFloatingText(rule.message, c * cardWidth + cardWidth/2, r * cardHeight + 20, rule.color);
+                if (rule.sound === 'hatch') sound.playHatch();
+              }
+            }
+            else if (rule.type === 'ADJACENT_BUFF') {
+              const matches = adjs.filter(a => a.id === rule.target);
+              if (matches.length > 0) {
+                payoutBonus += matches.length * rule.multiplier; cellTriggered = true;
+                spawnFloatingText(`${rule.message} +${matches.length * rule.multiplier}`, c * cardWidth + cardWidth/2, r * cardHeight + 20, rule.color);
+                matches.forEach(m => { state.grid[m.r][m.c].winHighlight = true; });
+              }
+            }
+            else if (rule.type === 'CUSTOM') {
+              const customBonus = rule.execute(r, c, adjs, itemsToRemove, itemsToAdd, {
+                spawnFloatingText, sound, createExplosionParticles, state, ROWS, COLS, cardWidth, cardHeight,
+                updateDestructionLogUI: window.updateDestructionLogUI
+              });
+              if (customBonus > 0) { payoutBonus += customBonus; cellTriggered = true; }
+            }
+          });
+
+          if (payoutBonus > 0) {
+            spinScore += payoutBonus; createCoinsParticles(c * cardWidth + cardWidth/2, r * cardHeight + cardHeight/2, Math.min(payoutBonus, 8));
+            if (cellTriggered || payoutBonus > def.payout) cell.winHighlight = true;
+          }
+        }
+      }
+
+      const toRemoveIds = [];
+      itemsToRemove.forEach(loc => {
+        const [r, c] = loc.split('_').map(Number); const cell = state.grid[r]?.[c];
+        if (cell) { toRemoveIds.push(cell.id); cell.id = 'empty'; }
+      });
+      toRemoveIds.forEach(id => { const idx = state.deck.indexOf(id); if (idx > -1) state.deck.splice(idx, 1); });
+      itemsToAdd.forEach(id => state.deck.push(id));
+
+      state.coins += spinScore; state.totalCoinsEarned += spinScore;
+      if (spinScore > 0) { sound.playCoin(); spawnFloatingText(`+${spinScore} Coins!`, canvas.width / 4, canvas.height / 2, '#fbbf24'); }
+      state.spinsRemaining--; syncHUD(); updateDeckUI();
+
+      setTimeout(() => {
+        state.isSpinning = false; document.getElementById('btn-spin').disabled = false;
+        if (state.spinsRemaining === 0) handleDeadlineDeadline(); else openDraftModal();
+      }, 1500);
+    }
+
+    function handleDeadlineDeadline() {
+      if (state.coins >= state.rentTarget) {
+        state.coins -= state.rentTarget; sound.playCycleClear();
+        const overlay = document.getElementById('canvas-overlay');
+        const title = document.getElementById('overlay-title'); const desc = document.getElementById('overlay-desc');
+        title.innerText = `STAGE ${state.stage} CLEAR!`; title.className = "text-3xl font-black font-cyber text-emerald-400 mb-2 neon-text-cyan";
+        desc.innerText = `목표 빚 ${state.rentTarget}코인을 상환했습니다. 다음 세대로 전진합니다!`;
+        overlay.style.opacity = '1'; overlay.style.pointerEvents = 'auto';
+        let timeoutId;
+        const skipHandler = () => {
+          overlay.style.opacity = '0'; overlay.style.pointerEvents = 'none';
+          overlay.removeEventListener('click', skipHandler); clearTimeout(timeoutId);
+          state.stage++; state.rentTarget = getRentForStage(state.stage); state.spinsRemaining = 5;
+          
+          state.rerolls = (state.rerolls || 0) + 1;
+          
+          syncHUD(); openDraftModal();
+        };
+        overlay.addEventListener('click', skipHandler);
+        timeoutId = setTimeout(skipHandler, 3000);
+      } else { triggerGameOver(); }
+    }
+
+    function triggerGameOver() {
+      sound.playGameOver();
+      const overlay = document.getElementById('canvas-overlay');
+      const title = document.getElementById('overlay-title'); const desc = document.getElementById('overlay-desc');
+      title.innerText = "DEBT FORECLOSURE"; title.className = "text-3xl font-black font-cyber text-red-500 mb-2";
+      desc.innerText = "파산했습니다. 데드라인을 준수하지 못했습니다."; overlay.style.opacity = '1';
+      setTimeout(() => {
+        overlay.style.opacity = '0'; const goModal = document.getElementById('modal-gameover');
+        document.getElementById('go-score').innerText = `${state.totalCoinsEarned.toLocaleString()} 점`;
+        document.getElementById('go-stage').innerText = `Stage ${state.stage}`;
+        goModal.style.opacity = '1'; goModal.style.pointerEvents = 'auto';
+      }, 2500);
+    }
+
+    function getRandomSymbolByRarity() {
+      const r = Math.random() * 100; let selectedRarity = 'common';
+      if (r < 1.2) selectedRarity = 'legendary'; else if (r < 6.5) selectedRarity = 'rare'; else if (r < 32.0) selectedRarity = 'uncommon';
+      const filtered = Object.keys(SYMBOL_TYPES).filter(k => k !== 'empty' && SYMBOL_TYPES[k].rarity === selectedRarity);
+      return filtered.length === 0 ? 'coin' : filtered[Math.floor(Math.random() * filtered.length)];
+    }
+
+    function openDraftModal() {
+      const modal = document.getElementById('modal-draft'); const container = document.getElementById('draft-choices');
+      const choices = []; let attempts = 0;
+      
+      const modalTitle = modal.querySelector('h2');
+      const modalDesc = modal.querySelector('p');
+      
+      const rerollBtn = document.getElementById('btn-reroll-draft');
+      const rerollCountSpan = document.getElementById('draft-reroll-count');
+      if (rerollCountSpan) rerollCountSpan.innerText = state.rerolls || 0;
+      if (rerollBtn) rerollBtn.disabled = (!state.rerolls || state.rerolls <= 0);
+      
+      const isStage4Special = (state.stage % 4 === 0 && state.spinsRemaining === 5);
+      
+      if (isStage4Special) {
+        if (modalTitle) {
+          modalTitle.innerText = "👑 LEGENDARY AWAKENING";
+          modalTitle.className = "text-2xl font-black font-cyber text-yellow-400 mt-1 tracking-widest animate-pulse";
+        }
+        if (modalDesc) modalDesc.innerText = `${state.stage}스테이지 진입 기념 특전! 3가지 선택지가 모두 전설 등급으로 고정됩니다.`;
+
+        const legendaries = Object.keys(SYMBOL_TYPES).filter(k => k !== 'empty' && SYMBOL_TYPES[k].rarity === 'legendary');
+        while (choices.length < 3 && legendaries.length >= 3) {
+          const randLegendary = legendaries[Math.floor(Math.random() * legendaries.length)];
+          if (!choices.includes(randLegendary)) choices.push(randLegendary);
+        }
+      } else {
+        if (modalTitle) {
+          modalTitle.innerText = "CHOOSE YOUR SYMBOL";
+          modalTitle.className = "text-2xl font-black font-cyber text-pink-500 mt-1";
+        }
+        if (modalDesc) modalDesc.innerText = "덱에 추가할 강력한 심볼을 선택하십시오.";
+
+        while (choices.length < 3 && attempts < 100) {
+          attempts++; const candidate = getRandomSymbolByRarity();
+          if (!choices.includes(candidate)) choices.push(candidate);
+        }
+        while (choices.length < 3) {
+          const commons = Object.keys(SYMBOL_TYPES).filter(k => k !== 'empty' && SYMBOL_TYPES[k].rarity === 'common');
+          const randCommon = commons[Math.floor(Math.random() * commons.length)];
+          if (!choices.includes(randCommon)) choices.push(randCommon);
+        }
+      }
+
+      const rarityBadge = {
+        common: '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">COMMON</span>',
+        uncommon: '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">UNCOMMON</span>',
+        rare: '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-950 text-purple-400 border border-purple-800">RARE</span>',
+        legendary: '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-yellow-950 text-yellow-400 border border-yellow-800 animate-bounce">LEGENDARY</span>'
+      };
+
+      container.innerHTML = choices.map((symId) => {
+        const sym = SYMBOL_TYPES[symId]; let cardStyle = 'border-gray-800 hover:border-pink-500';
+        if (sym.rarity === 'legendary') cardStyle = 'border-yellow-500 bg-yellow-950/20 neon-border-yellow animate-pulse';
+        else if (sym.rarity === 'rare') cardStyle = 'border-purple-500 bg-purple-950/20 neon-border-magenta';
+        else if (sym.rarity === 'uncommon') cardStyle = 'border-cyan-500 bg-cyan-950/20 neon-border-cyan';
+        return `
+          <button onclick="window.selectDraft('${symId}')" class="flex flex-col items-center justify-between p-4 bg-gray-950 border-2 ${cardStyle} rounded-2xl transition-all text-center focus:outline-none h-full hover:scale-105 transform">
+            <div class="mb-1">${rarityBadge[sym.rarity]}</div><span class="text-4xl my-2">${sym.emoji}</span>
+            <div class="w-full"><h3 class="text-xs font-black text-gray-100">${sym.name}</h3><p class="text-[9px] text-gray-400 mt-1.5 leading-tight line-clamp-3">${sym.desc}</p></div>
+            <div class="mt-3 py-1 px-2.5 bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 text-[9px] font-black font-cyber rounded">Base: +${sym.payout}</div>
+          </button>`;
+      }).join('');
+      modal.style.opacity = '1'; modal.style.pointerEvents = 'auto';
+    }
+
+    window.selectDraft = function(symId) { state.deck.push(symId); closeDraftModal(); };
+    function closeDraftModal() { const modal = document.getElementById('modal-draft'); modal.style.opacity = '0'; modal.style.pointerEvents = 'none'; updateDeckUI(); syncHUD(); }
+    document.getElementById('btn-skip-draft').addEventListener('click', () => { state.coins += 2; state.totalCoinsEarned += 2; sound.playCoin(); closeDraftModal(); });
+
+    const btnViewDeck = document.getElementById('btn-view-deck-hover');
+    const deckPreview = document.getElementById('deck-preview-popover');
+    if (btnViewDeck && deckPreview) {
+      btnViewDeck.addEventListener('mouseenter', () => {
+        const counts = {}; state.deck.forEach(s => counts[s] = (counts[s] || 0) + 1);
+        const html = Object.entries(counts).map(([symId, count]) => {
+          const sym = SYMBOL_TYPES[symId]; if (!sym) return '';
+          let rarityBorder = 'border-gray-800';
+          if (sym.rarity === 'legendary') rarityBorder = 'border-yellow-500';
+          else if (sym.rarity === 'rare') rarityBorder = 'border-purple-500';
+          else if (sym.rarity === 'special') rarityBorder = 'border-rose-500';
+          return `
+            <div class="relative flex flex-col items-center justify-center h-12 bg-gray-900 border ${rarityBorder} rounded-lg p-1 text-center">
+              <span class="text-base">${sym.emoji}</span>
+              <span class="text-[8px] text-gray-400 truncate max-w-full tracking-tighter">${sym.name}</span>
+              <span class="absolute -top-1 -right-1 px-1 py-0.5 bg-cyan-500 text-black text-[7px] font-black rounded-full leading-none">${count}</span>
+            </div>`;
+        }).join('');
+        deckPreview.innerHTML = html || `<div class="col-span-4 text-center text-xs text-gray-500 py-2">덱이 비어있습니다.</div>`;
+        deckPreview.classList.remove('hidden');
+      });
+      btnViewDeck.addEventListener('mouseleave', () => { deckPreview.classList.add('hidden'); });
+    }
+
+    function renderSynergyGuide() {
+      const container = document.getElementById('synergy-guide-container');
+      const groups = {
+        common: { name: 'Common (일반)', rate: '68%', color: 'text-gray-400 border-gray-800 bg-gray-950/40' },
+        uncommon: { name: 'Uncommon (언커먼)', rate: '25.5%', color: 'text-cyan-400 border-cyan-900 bg-cyan-950/10' },
+        rare: { name: 'Rare (레어)', rate: '5.3%', color: 'text-purple-400 border-purple-900 bg-purple-950/10' },
+        legendary: { name: 'Legendary (전설)', rate: '1.2%', color: 'text-yellow-400 border-yellow-700 bg-yellow-950/20 neon-border-yellow' },
+        special: { name: 'Special (특수 획득)', rate: '드래프트 제외', color: 'text-rose-400 border-rose-900 bg-rose-950/10' }
+      };
+      const categorized = { common: [], uncommon: [], rare: [], legendary: [], special: [] };
+      Object.entries(SYMBOL_TYPES).forEach(([id, sym]) => { if (id !== 'empty' && categorized[sym.rarity]) categorized[sym.rarity].push({ id, ...sym }); });
+      let html = '';
+      Object.entries(groups).forEach(([rarityKey, groupInfo]) => {
+        const symbols = categorized[rarityKey];
+        if (symbols && symbols.length > 0) {
+          html += `<div class="col-span-1 md:col-span-2 border-b border-gray-800 pb-1.5 mt-4 mb-2"><h4 class="text-sm font-black flex items-center justify-between"><span class="${groupInfo.color.split(' ')[0]} font-cyber tracking-widest">${groupInfo.name}</span><span class="text-[11px] font-cyber text-pink-500 font-bold">등장 확률: ${groupInfo.rate}</span></h4></div>`;
+          symbols.forEach(sym => {
+            const rarityColors = { common: 'text-gray-400 border-gray-800 bg-gray-950/60', uncommon: 'text-cyan-400 border-cyan-900 bg-cyan-950/10', rare: 'text-purple-400 border-purple-900 bg-purple-950/10', legendary: 'text-yellow-400 border-yellow-700 bg-yellow-950/20', special: 'text-rose-400 border-rose-900 bg-rose-950/20 neon-border-magenta' };
+            html += `
+              <div class="p-3 rounded-xl border ${rarityColors[sym.rarity] || 'text-gray-400 border-gray-800'} flex gap-3 items-center transition hover:scale-[1.01] duration-150">
+                <span class="text-3xl">${sym.emoji}</span>
+                <div class="flex-1 min-w-0">
+                  <span class="font-bold text-gray-100 text-xs">${sym.name}</span>
+                  <p class="text-gray-400 text-[10px] mt-1 leading-tight">${sym.desc}</p>
+                  <div class="text-[9px] text-yellow-500 font-cyber mt-1">기본 지급: +${sym.payout}🪙</div>
+                </div>
+              </div>`;
+          });
+        }
+      });
+      container.innerHTML = html;
+    }
+
+    const btnSubmit = document.getElementById('btn-submit-score');
+    btnSubmit.addEventListener('click', async () => {
+      const nickname = document.getElementById('input-nickname').value.trim() || '익명의 갬블러';
+      btnSubmit.disabled = true; btnSubmit.innerText = '인증 및 등록 중...';
+      const duplicate = localLeaderboard.find(rec => rec.nickname === nickname);
+      if (duplicate && state.totalCoinsEarned > duplicate.score) openConflictModal(duplicate, nickname);
+      else await registerRecordDirectly(nickname, false);
+    });
+
+    function openConflictModal(existingRecord, nickname) {
+      const modal = document.getElementById('modal-conflict');
+      document.getElementById('conflict-name').innerText = nickname;
+      document.getElementById('conflict-old').innerText = existingRecord.score;
+      document.getElementById('conflict-new').innerText = state.totalCoinsEarned;
+      modal.classList.remove('hidden');
+      document.getElementById('btn-conflict-overwrite').onclick = async () => { modal.classList.add('hidden'); await registerRecordDirectly(nickname, true, existingRecord.id); };
+      document.getElementById('btn-conflict-new').onclick = async () => { modal.classList.add('hidden'); await registerRecordDirectly(nickname, false); };
+    }
+
+    async function registerRecordDirectly(nickname, overwrite, targetId = null) {
+      try {
+        const leaderboardCol = collection(db, ...leaderboardPath);
+        const payload = { nickname, score: state.totalCoinsEarned, stage: state.stage, timestamp: Date.now() };
+        if (overwrite && targetId) await setDoc(doc(db, ...leaderboardPath, targetId), payload);
+        else await addDoc(leaderboardCol, payload);
+        document.getElementById('modal-gameover').style.opacity = '0'; document.getElementById('modal-gameover').style.pointerEvents = 'none';
+        resetGameEngine();
+      } catch (err) { console.error(err); } finally { btnSubmit.disabled = false; btnSubmit.innerText = '랭킹 등록하기 🏆'; }
+    }
+
+    function resetGameEngine() {
+      state = { coins: 10, totalCoinsEarned: 10, rentTarget: 25, spinsRemaining: 5, stage: 1, deck: generateInitialDeck(), grid: [], particles: [], isSpinning: false, selectedDraftIndex: null, floatingTexts: [], piggySavings: 0, destroyedByBombs: [], rerolls: 0 };
+      buildMockGrid(); syncHUD(); updateDeckUI(); updateDestructionLogUI();
+    }
+
+    document.getElementById('btn-restart').addEventListener('click', () => {
+      document.getElementById('modal-gameover').style.opacity = '0'; document.getElementById('modal-gameover').style.pointerEvents = 'none'; resetGameEngine();
+    });
+
+    document.getElementById('btn-spin').addEventListener('click', executeSpin);
+    window.addEventListener('keydown', (e) => { if (e.code === 'Space' && document.activeElement?.id !== 'input-nickname') { e.preventDefault(); executeSpin(); } });
+    document.getElementById('deco-joy').addEventListener('click', executeSpin);
+
+    document.getElementById('btn-reroll-draft').addEventListener('click', () => {
+      if (state.rerolls > 0) {
+        state.rerolls--;
+        sound.playSpin(); 
+        openDraftModal(); 
+      }
+    });
+
+    const muteBtn = document.getElementById('btn-mute');
+    muteBtn.addEventListener('click', () => {
+      sound.muted = !sound.muted; muteBtn.innerText = sound.muted ? '🔇 소리 끔' : '🔊 소리 켬';
+      muteBtn.className = sound.muted ? 'px-3 py-1.5 rounded bg-red-950 text-red-400 text-sm border border-red-800 transition' : 'px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-700 text-sm border border-gray-700 transition';
+    });
+
+    const guideModal = document.getElementById('modal-guide');
+    document.getElementById('btn-guide').addEventListener('click', () => { guideModal.style.opacity = '1'; guideModal.style.pointerEvents = 'auto'; });
+    document.getElementById('btn-close-guide').addEventListener('click', () => { guideModal.style.opacity = '0'; guideModal.style.pointerEvents = 'none'; });
+
+    function shuffle(array) {
+      let currentIndex = array.length, randomIndex;
+      while (currentIndex !== 0) { randomIndex = Math.floor(Math.random() * currentIndex); currentIndex--; [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]]; }
+      return array;
+    }
+  </script>
+  <script defer src="/minigame/copyright-notice.js"></script>
+</body>
+</html>

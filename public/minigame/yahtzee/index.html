@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오락실 야찌 게임</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght=400;600;700;800&display=swap');
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #f1f5f9;
+        }
+        /* 주사위 디자인 고도화 */
+        .dice-box {
+            perspective: 600px;
+        }
+        .dice-face {
+            transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .dice-face.kept {
+            transform: scale(0.95);
+            background-color: #10b981 !important;
+            border-color: #059669 !important;
+        }
+        /* 스크롤바 커스텀 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+  <script src="/_runtime/firebase-config?app=minigame"></script>
+  <meta name="author" content="게시판 운영자">
+  <meta name="copyright" content="© 2026 게시판">
+  <meta name="rights" content="AI 도구를 제작 보조로 활용해 운영자가 기획·구현·편집한 자체 콘텐츠">
+</head>
+<body class="min-h-screen pb-12">
+
+    <div id="auth-loading-overlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-white">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-emerald-500 mb-4"></div>
+        <h2 class="text-xl font-bold">보안 데이터베이스 연결 중...</h2>
+        <p class="text-slate-400 text-sm mt-1">안전한 데이터 검증 시스템을 활성화하고 있습니다.</p>
+    </div>
+
+    <header class="bg-slate-900 text-white py-6 shadow-md mb-8">
+        <div class="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <span class="text-4xl">🎲</span>
+                <div>
+                    <h1 id="game-title-header" class="text-2xl font-extrabold tracking-tight flex items-center gap-2">
+                        오락실 야찌 게임
+                    </h1>
+                    <p class="text-xs text-slate-400 tracking-wider font-bold">YAHTZEE!</p>
+                </div>
+            </div>
+            
+            <div class="bg-slate-800 p-1.5 rounded-xl border border-slate-700 flex flex-wrap items-center gap-1.5">
+                <button id="mode-practice-btn" onclick="switchMode('practice')" class="px-4 py-1.5 rounded-lg text-sm font-semibold bg-emerald-500 text-white transition-all">
+                    연습 모드 (무제한)
+                </button>
+                <button id="mode-rank-btn" onclick="switchMode('rank')" class="px-4 py-1.5 rounded-lg text-sm font-semibold text-slate-400 hover:text-white transition-all">
+                    🔥 랭킹 모드 (하루 3회)
+                </button>
+                <a href="/" target="_blank" class="px-4 py-1.5 rounded-lg text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all flex items-center gap-1">
+                    📅 예약시스템
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4">
+        <div id="status-bar" class="mb-4 p-4 rounded-xl bg-emerald-100 border border-emerald-200 text-emerald-800 font-medium text-sm flex items-center justify-between shadow-sm">
+            <span>🟢 현재 <strong>연습 모드</strong>로 플레이 중입니다. 연습 모드에서는 점수가 기록되지 않습니다.</span>
+            <span class="text-xs text-emerald-600 bg-white/50 px-2 py-1 rounded">기록 비활성</span>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <div class="lg:col-span-8 bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex items-center gap-2">
+                        <span id="round-badge" class="bg-slate-100 text-slate-800 text-sm font-bold px-3 py-1 rounded-full">라운드: 1 / 12</span>
+                        <span id="roll-badge" class="bg-indigo-100 text-indigo-800 text-sm font-bold px-3 py-1 rounded-full">남은 롤: 3회</span>
+                    </div>
+                    <button onclick="resetGame()" class="text-sm text-slate-500 hover:text-rose-500 hover:underline flex items-center gap-1 transition-all">
+                        🔄 새 게임 시작
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-5 gap-3 md:gap-5 my-8">
+                    <div onclick="toggleKeep(0)" class="dice-box cursor-pointer">
+                        <div id="dice-container-0" class="dice-face w-full aspect-square bg-slate-100 border-2 border-slate-300 rounded-xl flex items-center justify-center shadow-sm hover:border-indigo-400 transition-all">
+                            <div class="text-slate-400 text-2xl font-bold">?</div>
+                        </div>
+                        <p class="text-center text-xs mt-2 text-slate-400 select-none">Keep</p>
+                    </div>
+                    <div onclick="toggleKeep(1)" class="dice-box cursor-pointer">
+                        <div id="dice-container-1" class="dice-face w-full aspect-square bg-slate-100 border-2 border-slate-300 rounded-xl flex items-center justify-center shadow-sm hover:border-indigo-400 transition-all">
+                            <div class="text-slate-400 text-2xl font-bold">?</div>
+                        </div>
+                        <p class="text-center text-xs mt-2 text-slate-400 select-none">Keep</p>
+                    </div>
+                    <div onclick="toggleKeep(2)" class="dice-box cursor-pointer">
+                        <div id="dice-container-2" class="dice-face w-full aspect-square bg-slate-100 border-2 border-slate-300 rounded-xl flex items-center justify-center shadow-sm hover:border-indigo-400 transition-all">
+                            <div class="text-slate-400 text-2xl font-bold">?</div>
+                        </div>
+                        <p class="text-center text-xs mt-2 text-slate-400 select-none">Keep</p>
+                    </div>
+                    <div onclick="toggleKeep(3)" class="dice-box cursor-pointer">
+                        <div id="dice-container-3" class="dice-face w-full aspect-square bg-slate-100 border-2 border-slate-300 rounded-xl flex items-center justify-center shadow-sm hover:border-indigo-400 transition-all">
+                            <div class="text-slate-400 text-2xl font-bold">?</div>
+                        </div>
+                        <p class="text-center text-xs mt-2 text-slate-400 select-none">Keep</p>
+                    </div>
+                    <div onclick="toggleKeep(4)" class="dice-box cursor-pointer">
+                        <div id="dice-container-4" class="dice-face w-full aspect-square bg-slate-100 border-2 border-slate-300 rounded-xl flex items-center justify-center shadow-sm hover:border-indigo-400 transition-all">
+                            <div class="text-slate-400 text-2xl font-bold">?</div>
+                        </div>
+                        <p class="text-center text-xs mt-2 text-slate-400 select-none">Keep</p>
+                    </div>
+                </div>
+
+                <button id="roll-btn" onclick="rollDice()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 text-lg">
+                    🎲 주사위 굴리기 (Roll Dice)
+                </button>
+
+                <div class="overflow-x-auto mt-8">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-slate-500 text-sm">
+                                <th class="pb-3 font-semibold">족보 (Category)</th>
+                                <th class="pb-3 font-semibold">설명</th>
+                                <th class="pb-3 font-semibold text-center w-24">점수</th>
+                            </tr>
+                        </thead>
+                        <tbody id="score-table-body" class="divide-y divide-slate-100 text-sm">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="lg:col-span-4 space-y-6">
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 id="leaderboard-title" class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            🏆 명예의 전당 (Top 10)
+                        </h2>
+                        <button onclick="loadLeaderboard()" class="text-xs text-indigo-600 hover:underline font-semibold px-2 py-1 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200 transition-all">
+                            새로고침
+                        </button>
+                    </div>
+                    
+                    <p class="text-[11px] text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg p-2 mb-4 leading-relaxed font-semibold">
+                        🔥 명예의 전당 기록은 초기화 없이 실시간으로 상시 누적 보존됩니다.
+                    </p>
+                    
+                    <ul id="leaderboard-list" class="divide-y divide-slate-100 text-sm max-h-[400px] overflow-y-auto pr-1">
+                        <li class="py-3 text-center text-slate-400">불러오는 중...</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="save-section" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden animate-in fade-in duration-200">
+        <div class="bg-slate-900 border border-slate-800 text-white rounded-2xl max-w-sm w-full p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            <button onclick="closeSaveSection()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-all text-xl font-bold" aria-label="닫기">
+                &times;
+            </button>
+            <h3 class="text-lg font-extrabold text-amber-400 mb-2">🎉 GAME OVER!</h3>
+            <p class="text-xs text-slate-300 mb-4">멋진 플레이였습니다! 랭킹 명예의 전당에 기적의 최종 점수를 박제해 보세요.</p>
+            <div class="bg-slate-950 rounded-xl p-4 mb-4 border border-slate-800 text-center">
+                <span class="text-slate-400 text-[10px] block uppercase tracking-wider font-semibold">최종 스코어</span>
+                <span id="final-score-text" class="text-4xl font-black text-white">0</span> <span class="text-sm text-slate-400">점</span>
+            </div>
+            <div id="save-form" class="space-y-3">
+                <input type="text" id="player-id" placeholder="플레이어 이름 입력 (최대 10글자)" maxlength="10" 
+                       class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                <button onclick="saveScore()" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl transition-all text-sm">
+                    점수 등록하기
+                </button>
+            </div>
+            <p id="save-disabled-msg" class="text-xs text-rose-400 text-center mt-3 hidden">
+                ⚠️ '랭킹 모드'가 아닌 '연습 모드'에서는 명예의 전당 등록이 불가능합니다.
+            </p>
+        </div>
+    </div>
+
+    <div id="overwrite-confirm-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden animate-in fade-in duration-200">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in duration-200">
+            <h3 class="text-lg font-bold text-slate-900 mb-2 flex items-center gap-1.5">
+                🤔 기존 기록 덮어쓰기 확인
+            </h3>
+            <p id="overwrite-modal-body" class="text-slate-600 text-sm leading-relaxed mb-6">
+                이미 해당 이름의 기존 기록이 명예의 전당에 존재합니다. 더 높은 점수로 기존 기록을 변경할까요, 아니면 개별 기록으로 새로 추가 등록할까요?
+            </p>
+            <div class="flex flex-col gap-2">
+                <button onclick="handleOverwriteChoice(true)" id="overwrite-yes-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-xl text-sm transition-all">
+                    기존 기록 덮어씌우기
+                </button>
+                <button onclick="handleOverwriteChoice(false)" id="overwrite-no-btn" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-sm transition-all">
+                    새로운 기록으로 추가 등록
+                </button>
+                <button onclick="closeOverwriteModal()" id="overwrite-cancel-btn" class="w-full bg-transparent hover:bg-slate-50 text-slate-400 font-semibold py-2 rounded-xl text-xs transition-all text-center">
+                    취소
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="custom-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in duration-200">
+            <h3 id="modal-title" class="text-lg font-bold text-slate-900 mb-2">알림</h3>
+            <p id="modal-body" class="text-slate-600 text-sm leading-relaxed mb-6">내용입니다.</p>
+            <div class="flex gap-3">
+                <button id="modal-confirm-btn" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-xl text-sm transition-all">
+                    확인
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ────────────────────────────────────────────────────────
+        // 🛠️ [모듈 구조 내재화 이식] 외부 파일 변동 없는 완벽 독립 처리
+        // ────────────────────────────────────────────────────────
+        const minigameConfig = JSON.parse(atob(_mg_fbc));
+
+        const app = initializeApp(minigameConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // minigames.js 핵심 데이터 풀 및 마스터 팽창 로직 동일 적용
+        const RAW_GAMES = [
+            {
+                id: 'yahtzee', 
+                name: '🎲 야찌게임 플레이', 
+                label: '주사위왕' 
+            }
+        ];
+
+        const MASTER_GAMES = RAW_GAMES.map(game => {
+            const href = game.href || `/minigame/${game.id}/index.html`;
+            let rawRanks = game.ranks;
+            if (!rawRanks && game.label) {
+                rawRanks = [{ key: game.id, label: game.label }];
+            } else if (!rawRanks) {
+                rawRanks = [{ key: game.id, label: '최강자' }];
+            }
+            const normalizedRanks = rawRanks.map(r => ({
+                key: r.key,
+                label: r.label,
+                path: r.path || ['artifacts', game.id, 'public', 'data', 'leaderboard']
+            }));
+            return { ...game, href, ranks: normalizedRanks };
+        });
+
+        // 팽창 결과를 통한 동적 경로 추출
+        const gameMeta = MASTER_GAMES.find(g => g.id === 'yahtzee');
+        const rankMeta = gameMeta.ranks[0];
+        const rankPath = rankMeta.path;
+
+        const appId = gameMeta.id;
+        // ────────────────────────────────────────────────────────
+
+        // 로컬 유저 상태 및 IP 정보 캐싱
+        let currentUser = null;
+        let clientIp = "";
+        let playMode = "practice"; 
+        let hasDailyLimitReached = false; 
+
+        function getLocalDateString() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        const initAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                try {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } catch (e) {
+                    await signInAnonymously(auth);
+                }
+            } else {
+                await signInAnonymously(auth);
+            }
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            currentUser = user;
+            if (user) {
+                try {
+                    const res = await fetch("https://api.ipify.org?format=json");
+                    const data = await res.json();
+                    clientIp = data.ip;
+                } catch (err) {}
+                await checkDailyPlayLimit();
+                await loadLeaderboard();
+                
+                const loader = document.getElementById("auth-loading-overlay");
+                if (loader) loader.classList.add("hidden");
+            }
+        });
+
+        initAuth();
+
+        async function checkDailyPlayLimit() {
+            if (!currentUser) return;
+
+            const todayStr = getLocalDateString(); 
+            let localCount = parseInt(localStorage.getItem(`yacht_play_count_${todayStr}`) || "0", 10);
+            if (isNaN(localCount)) localCount = 0;
+            
+            let dbCount = 0;
+            let ipCount = 0;
+
+            try {
+                const userDocRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'game_history', todayStr);
+                const userDoc = await getDoc(userDocRef);
+                if (userDoc.exists()) {
+                    dbCount = userDoc.data().count || 0;
+                }
+            } catch (err) {}
+
+            if (clientIp) {
+                try {
+                    const ipDocId = clientIp.replace(/\./g, '_').replace(/:/g, '_');
+                    const ipDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'ip_history', ipDocId);
+                    const ipDoc = await getDoc(ipDocRef);
+                    if (ipDoc.exists()) {
+                        ipCount = ipDoc.data()[todayStr] || 0;
+                    }
+                } catch (err) {}
+            }
+
+            const currentCount = Math.max(localCount, dbCount, ipCount);
+            hasDailyLimitReached = currentCount >= 3;
+            localStorage.setItem(`yacht_play_count_${todayStr}`, currentCount.toString());
+            updateStatusBar();
+        }
+
+        async function lockDailyPlay() {
+            if (playMode !== "rank" || hasDailyLimitReached) return;
+            
+            const todayStr = getLocalDateString();
+            let localCount = parseInt(localStorage.getItem(`yacht_play_count_${todayStr}`) || "0", 10) + 1;
+            if (isNaN(localCount)) localCount = 1;
+            localStorage.setItem(`yacht_play_count_${todayStr}`, localCount.toString());
+
+            if (currentUser) {
+                try {
+                    const userDocRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'game_history', todayStr);
+                    await setDoc(userDocRef, { count: localCount, timestamp: new Date() });
+                } catch (err) {}
+            }
+
+            if (clientIp) {
+                try {
+                    const ipDocId = clientIp.replace(/\./g, '_').replace(/:/g, '_');
+                    const ipDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'ip_history', ipDocId);
+                    await setDoc(ipDocRef, { [todayStr]: localCount }, { merge: true });
+                } catch (err) {}
+            }
+
+            hasDailyLimitReached = localCount >= 3;
+            updateStatusBar();
+        }
+
+        function updateStatusBar() {
+            const bar = document.getElementById("status-bar");
+            
+            if (playMode === "practice") {
+                bar.className = "mb-4 p-4 rounded-xl bg-emerald-100 border border-emerald-200 text-emerald-800 font-medium text-sm flex items-center justify-between shadow-sm";
+                bar.innerHTML = `<span>🟢 현재 <strong>연습 모드</strong>로 플레이 중입니다. 연습 모드에서는 점수가 기록되지 않습니다.</span>
+                                 <span class="text-xs text-emerald-600 bg-white/50 px-2 py-1 rounded">기록 비활성</span>`;
+            } else {
+                const todayStr = getLocalDateString();
+                let localCount = parseInt(localStorage.getItem(`yacht_play_count_${todayStr}`) || "0", 10);
+                if (isNaN(localCount)) localCount = 0;
+
+                const isGameActive = (currentRound > 1 || hasRolled);
+
+                if (localCount >= 3 && !isGameActive) {
+                    bar.className = "mb-4 p-4 rounded-xl bg-rose-100 border border-rose-200 text-rose-800 font-medium text-sm flex items-center justify-between shadow-sm animate-pulse";
+                    bar.innerHTML = `<span>🛑 오늘 하루 랭킹 참여 기회(3회)를 모두 소모하셨습니다. 연습 모드를 계속 이용해 주세요.</span>
+                                     <span class="text-xs text-rose-600 bg-white/50 px-2.5 py-1 rounded-md font-bold">GAME OVER</span>`;
+                } else {
+                    const displayCount = Math.max(0, 3 - localCount);
+                    bar.className = "mb-4 p-4 rounded-xl bg-indigo-100 border border-indigo-200 text-indigo-800 font-medium text-sm flex items-center justify-between shadow-sm";
+                    bar.innerHTML = `<span>🔥 <strong>랭킹 모드</strong> 플레이 중! 오늘 남은 기회 (${displayCount}회/3회)</span>
+                                     <span class="text-xs text-indigo-600 bg-white/50 px-2.5 py-1 rounded-md font-bold">참여 중</span>`;
+                }
+            }
+        }
+
+        window.switchMode = function(targetMode) {
+            if (targetMode === "rank" && hasDailyLimitReached) {
+                showModal("참여 제한 안내", "죄송합니다! 오늘 자 랭킹 모드 참여 기회(3회)를 모두 소진하셨습니다. 무제한 '연습 모드'에서 실력을 가다듬어 보세요.");
+                return;
+            }
+
+            playMode = targetMode;
+            document.getElementById("mode-practice-btn").className = playMode === "practice" ? "px-4 py-1.5 rounded-lg text-sm font-semibold bg-emerald-500 text-white transition-all" : "px-4 py-1.5 rounded-lg text-sm font-semibold text-slate-400 hover:text-white transition-all";
+            document.getElementById("mode-rank-btn").className = playMode === "rank" ? "px-4 py-1.5 rounded-lg text-sm font-semibold bg-indigo-50 text-white transition-all" : "px-4 py-1.5 rounded-lg text-sm font-semibold text-slate-400 hover:text-white transition-all";
+
+            updateStatusBar();
+            resetGame();
+        };
+
+        // 주사위 게임 엔진 핵심 구동 시스템
+        let dice = [0, 0, 0, 0, 0];
+        let keeps = [false, false, false, false, false];
+        let rollsLeft = 3;
+        let currentRound = 1;
+        let hasRolled = false;
+
+        const categories = {
+            aces: { name: "Aces (1)", desc: "1의 눈 총합", score: null, calc: d => sumOf(d, 1) },
+            deuces: { name: "Deuces (2)", desc: "2의 눈 총합", score: null, calc: d => sumOf(d, 2) },
+            threes: { name: "Threes (3)", desc: "3의 눈 총합", score: null, calc: d => sumOf(d, 3) },
+            fours: { name: "Fours (4)", desc: "4의 눈 총합", score: null, calc: d => sumOf(d, 4) },
+            fives: { name: "Fives (5)", desc: "5의 눈 총합", score: null, calc: d => sumOf(d, 5) },
+            sixes: { name: "Sixes (6)", desc: "6의 눈 총합", score: null, calc: d => sumOf(d, 6) },
+            choice: { name: "Choice", desc: "모든 눈의 총합", score: null, calc: d => d.reduce((a, b) => a + b, 0) },
+            fourOfAKind: { name: "4 of a Kind", desc: "4개 이상 눈이 동일할 때 (전체 합)", score: null, calc: d => checkNOfAKind(d, 4) ? d.reduce((a, b) => a + b, 0) : 0 },
+            fullHouse: { name: "Full House", desc: "3개 일치 + 2개 일치 (전체 합)", score: null, calc: d => checkFullHouse(d) ? d.reduce((a, b) => a + b, 0) : 0 },
+            smallStraight: { name: "Small Straight", desc: "연속된 4개 주사위 눈 (15점)", score: null, calc: d => checkStraight(d, 4) ? 15 : 0 },
+            largeStraight: { name: "Large Straight", desc: "연속된 5개 주사위 눈 (30점)", score: null, calc: d => checkStraight(d, 5) ? 30 : 0 },
+            yacht: { name: "Yacht", desc: "5개 주사위 눈 모두 일치 (50점)", score: null, calc: d => checkNOfAKind(d, 5) ? 50 : 0 }
+        };
+
+        const sumOf = (arr, val) => arr.filter(x => x === val).reduce((a, b) => a + b, 0);
+        const getCounts = arr => {
+            const counts = {};
+            arr.forEach(x => counts[x] = (counts[x] || 0) + 1);
+            return counts;
+        };
+        const checkNOfAKind = (arr, n) => Object.values(getCounts(arr)).some(c => c >= n);
+        const checkFullHouse = arr => {
+            const counts = Object.values(getCounts(arr));
+            return (counts.includes(3) && counts.includes(2)) || counts.includes(5);
+        };
+        const checkStraight = (arr, length) => {
+            const uniqueStr = Array.from(new Set(arr)).sort().join('');
+            if (length === 5) {
+                return uniqueStr === "12345" || uniqueStr === "23456";
+            } else {
+                return /1234|2345|3456/.test(uniqueStr);
+            }
+        };
+
+        function getDiceHTML(value, isKept) {
+            if (value === 0) {
+                return `<span class="text-slate-300 text-3xl font-extrabold animate-pulse">?</span>`;
+            }
+            const dotPositions = {
+                1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8]
+            };
+            let dots = '';
+            const bgClass = isKept ? 'bg-white' : 'bg-slate-800';
+            for (let i = 0; i < 9; i++) {
+                if (dotPositions[value].includes(i)) {
+                    dots += `<div class="w-2.5 h-2.5 rounded-full ${bgClass}"></div>`;
+                } else {
+                    dots += `<div></div>`;
+                }
+            }
+            return `<div class="grid grid-cols-3 grid-rows-3 gap-1.5 p-3.5 w-full h-full justify-items-center items-center">${dots}</div>`;
+        }
+
+        function renderScoreTable() {
+            const tbody = document.getElementById('score-table-body');
+            tbody.innerHTML = '';
+            
+            let subtotal = 0;
+            const upperKeys = ['aces', 'deuces', 'threes', 'fours', 'fives', 'sixes'];
+            upperKeys.forEach(key => {
+                const cat = categories[key];
+                if (cat.score !== null) subtotal += cat.score;
+            });
+
+            upperKeys.forEach(key => {
+                tbody.appendChild(createRow(key, categories[key]));
+            });
+
+            const bonusRow = document.createElement('tr');
+            bonusRow.className = 'bg-slate-50 font-bold';
+            bonusRow.innerHTML = `
+                <td class="py-3 px-2 text-slate-800 font-semibold">Subtotal Bonus</td>
+                <td class="py-3 px-2 text-slate-500 text-xs">상단 보너스 합 63점 달성 시 (+35점)</td>
+                <td class="py-3 px-2 text-center text-slate-900">
+                    <span class="${subtotal >= 63 ? 'text-emerald-600' : 'text-slate-600'}">${subtotal}</span> / 63
+                    ${subtotal >= 63 ? '<span class="text-xs block text-emerald-600">+35점 보너스 획득!</span>' : ''}
+                </td>
+            `;
+            tbody.appendChild(bonusRow);
+
+            const lowerKeys = ['choice', 'fourOfAKind', 'fullHouse', 'smallStraight', 'largeStraight', 'yacht'];
+            lowerKeys.forEach(key => {
+                tbody.appendChild(createRow(key, categories[key]));
+            });
+
+            const totalScore = calculateTotalScore();
+            const totalRow = document.createElement('tr');
+            totalRow.className = 'bg-slate-900 text-white font-extrabold text-base';
+            totalRow.innerHTML = `
+                <td class="py-4 px-3 rounded-l-xl">TOTAL SCORE</td>
+                <td class="py-4 px-3 text-xs text-slate-400">총합 결과</td>
+                <td class="py-4 px-3 text-center text-amber-400 rounded-r-xl">${totalScore} 점</td>
+            `;
+            tbody.appendChild(totalRow);
+        }
+
+        function createRow(key, cat) {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-50 transition-all";
+            
+            const nameTd = document.createElement('td');
+            nameTd.className = "py-3 px-2 font-semibold text-slate-800";
+            nameTd.textContent = cat.name;
+
+            const descTd = document.createElement('td');
+            descTd.className = "py-3 px-2 text-xs text-slate-500";
+            descTd.textContent = cat.desc;
+
+            const scoreTd = document.createElement('td');
+            scoreTd.className = "py-3 px-2 text-center text-sm font-bold w-24";
+
+            if (cat.score !== null) {
+                scoreTd.textContent = cat.score;
+                scoreTd.className += " text-slate-900 bg-slate-100 rounded-lg";
+            } else if (hasRolled) {
+                const previewScore = cat.calc(dice);
+                scoreTd.textContent = previewScore;
+                scoreTd.className += " text-indigo-500 cursor-pointer hover:bg-indigo-50 hover:text-indigo-700 rounded-lg py-1.5 transition-all text-xs italic font-semibold border border-dashed border-indigo-200";
+                scoreTd.onclick = () => selectCategory(key);
+            } else {
+                scoreTd.textContent = '-';
+                scoreTd.className += " text-slate-300";
+            }
+
+            tr.appendChild(nameTd);
+            tr.appendChild(descTd);
+            tr.appendChild(scoreTd);
+            return tr;
+        }
+
+        function calculateTotalScore() {
+            let total = 0;
+            let upperSum = 0;
+            ['aces', 'deuces', 'threes', 'fours', 'fives', 'sixes'].forEach(k => upperSum += (categories[k].score || 0));
+            if (upperSum >= 63) total += 35;
+            Object.values(categories).forEach(cat => total += (cat.score || 0));
+            return total;
+        }
+
+        window.rollDice = async function() {
+            if (rollsLeft <= 0) return;
+
+            if (playMode === "rank" && currentRound === 1 && !hasRolled) {
+                if (hasDailyLimitReached) {
+                    showModal("참여 차단", "오늘은 이미 랭킹 모드 도전 제한 기회(3회)를 모두 소진하셨습니다.");
+                    switchMode('practice');
+                    return;
+                }
+                await lockDailyPlay();
+            }
+
+            for (let i = 0; i < 5; i++) {
+                if (!keeps[i]) {
+                    dice[i] = Math.floor(Math.random() * 6) + 1;
+                    const diceEl = document.getElementById(`dice-container-${i}`);
+                    diceEl.innerHTML = getDiceHTML(dice[i], false);
+                    diceEl.className = "dice-face w-full aspect-square bg-white border-2 border-slate-300 rounded-xl flex items-center justify-center shadow-md hover:border-indigo-400 transition-all";
+                }
+            }
+
+            hasRolled = true;
+            rollsLeft--;
+            updateStatusBar();
+
+            const rollBadge = document.getElementById('roll-badge');
+            rollBadge.textContent = `남은 롤: ${rollsLeft}회`;
+            if (rollsLeft === 0) {
+                rollBadge.className = "bg-rose-100 text-rose-800 text-sm font-bold px-3 py-1 rounded-full";
+                document.getElementById('roll-btn').disabled = true;
+                document.getElementById('roll-btn').className = "w-full bg-slate-300 text-slate-500 font-bold py-4 px-6 rounded-xl cursor-not-allowed transition-all text-lg";
+                
+                if (currentRound === 12) {
+                    const lastKey = Object.keys(categories).find(k => categories[k].score === null);
+                    if (lastKey) {
+                        setTimeout(() => { selectCategory(lastKey); }, 800);
+                    }
+                }
+            }
+            renderScoreTable();
+        };
+
+        window.toggleKeep = function(index) {
+            if (!hasRolled || dice[index] === 0) return;
+            keeps[index] = !keeps[index];
+            const diceEl = document.getElementById(`dice-container-${index}`);
+            if (keeps[index]) {
+                diceEl.classList.add('kept');
+                diceEl.innerHTML = getDiceHTML(dice[index], true);
+            } else {
+                diceEl.classList.remove('kept');
+                diceEl.innerHTML = getDiceHTML(dice[index], false);
+            }
+        };
+
+        function selectCategory(key) {
+            if (categories[key].score !== null) return;
+            categories[key].score = categories[key].calc(dice);
+            currentRound++;
+            if (currentRound > 12) {
+                endGame();
+            } else {
+                nextRound();
+            }
+        }
+
+        function nextRound() {
+            dice = [0, 0, 0, 0, 0];
+            keeps = [false, false, false, false, false];
+            rollsLeft = 3;
+            hasRolled = false;
+
+            document.getElementById('round-badge').textContent = `라운드: ${currentRound} / 12`;
+            const rollBadge = document.getElementById('roll-badge');
+            rollBadge.textContent = `남은 롤: ${rollsLeft}회`;
+            rollBadge.className = "bg-indigo-100 text-indigo-800 text-sm font-bold px-3 py-1 rounded-full";
+            
+            const rollBtn = document.getElementById('roll-btn');
+            rollBtn.disabled = false;
+            rollBtn.className = "w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 text-lg";
+
+            for (let i = 0; i < 5; i++) {
+                const diceEl = document.getElementById(`dice-container-${i}`);
+                diceEl.innerHTML = `<div class="text-slate-400 text-2xl font-bold">?</div>`;
+                diceEl.className = "dice-face w-full aspect-square bg-slate-100 border-2 border-slate-300 rounded-xl flex items-center justify-center shadow-sm hover:border-indigo-400 transition-all";
+            }
+            renderScoreTable();
+            updateStatusBar();
+        }
+
+        function endGame() {
+            document.getElementById('roll-btn').disabled = true;
+            document.getElementById('roll-btn').className = "w-full bg-slate-300 text-slate-500 font-bold py-4 px-6 rounded-xl cursor-not-allowed text-lg";
+            document.getElementById('round-badge').textContent = `게임 완결`;
+            renderScoreTable();
+            
+            const finalScore = calculateTotalScore();
+            document.getElementById('final-score-text').textContent = finalScore;
+            
+            document.getElementById('save-section').classList.remove('hidden');
+            if (playMode === "practice") {
+                document.getElementById('save-form').classList.add('hidden');
+                document.getElementById('save-disabled-msg').classList.remove('hidden');
+            } else {
+                document.getElementById('save-form').classList.remove('hidden');
+                document.getElementById('save-disabled-msg').classList.add('hidden');
+            }
+            updateStatusBar();
+        }
+
+        window.closeSaveSection = function() {
+            document.getElementById('save-section').classList.add('hidden');
+            updateStatusBar();
+        };
+
+        window.resetGame = function() {
+            currentRound = 1;
+            Object.keys(categories).forEach(k => categories[k].score = null);
+            closeSaveSection();
+            nextRound();
+        };
+
+        window.pendingSave = null;
+
+        window.saveScore = async function() {
+            const playerId = document.getElementById('player-id').value.trim();
+            if (!playerId) {
+                showModal('이름 미기입', '명예의 전당 등록을 위해 플레이어 닉네임을 입력해 주세요!');
+                return;
+            }
+            const finalScore = calculateTotalScore();
+            if (!currentUser) return;
+
+            try {
+                // 🌟 하드코딩 경로 대신 가변 배열 분해 바인딩 주입 적용
+                const querySnapshot = await getDocs(collection(db, ...rankPath));
+                let existingRecords = [];
+                querySnapshot.forEach((doc) => {
+                    if (doc.data().id === playerId) existingRecords.push({ docId: doc.id, ...doc.data() });
+                });
+
+                if (existingRecords.length > 0) {
+                    existingRecords.sort((a, b) => (b.highScore || 0) - (a.highScore || 0));
+                    const topRecord = existingRecords[0];
+                    const maxExistingScore = topRecord.highScore || 0;
+
+                    if (finalScore > maxExistingScore) {
+                        window.pendingSave = { playerId, finalScore, existingDocId: topRecord.docId };
+                        document.getElementById('overwrite-modal-body').innerHTML = `
+                            이미 명예의 전당에 <strong>${playerId}</strong>님의 기존 최고 점수(<strong>${maxExistingScore}점</strong>)가 기록되어 있습니다.<br><br>
+                            더 높은 점수인 <strong>${finalScore}점</strong>으로 기존 기록을 업데이트하시겠습니까? 아니면 개별 기록으로 새로 등록하시겠습니까?
+                        `;
+                        document.getElementById('overwrite-confirm-modal').classList.remove('hidden');
+                        return;
+                    }
+                }
+                await executeSave(false, { playerId, finalScore });
+            } catch (err) {
+                showModal('등록 실패', '명예의 전당 기록 검토 중 에러가 발생했습니다.');
+            }
+        };
+
+        window.handleOverwriteChoice = async function(overwrite) {
+            if (!window.pendingSave) return;
+            await executeSave(overwrite, window.pendingSave);
+            window.pendingSave = null;
+        };
+
+        window.closeOverwriteModal = function() {
+            document.getElementById('overwrite-confirm-modal').classList.add('hidden');
+            window.pendingSave = null;
+        };
+
+        window.executeSave = async function(overwrite, data) {
+            const { playerId, finalScore, existingDocId } = data;
+            try {
+                // 🌟 가변 배열 경로 구조 분해 동적 할당 연동
+                if (overwrite && existingDocId) {
+                    const existingDocRef = doc(db, ...[...rankPath, existingDocId]);
+                    await setDoc(existingDocRef, { highScore: finalScore, timestamp: new Date() }, { merge: true });
+                } else {
+                    await addDoc(collection(db, ...rankPath), { id: playerId, highScore: finalScore, timestamp: new Date() });
+                }
+                document.getElementById('overwrite-confirm-modal').classList.add('hidden');
+                document.getElementById('save-section').classList.add('hidden');
+                showModal('등록 성공', '명예의 전당 랭킹에 성공적으로 반영되었습니다!');
+                await loadLeaderboard();
+            } catch (err) {
+                showModal('등록 실패', '데이터베이스 저장 과정 중 오류가 발생하였습니다.');
+            }
+        };
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (!document.getElementById('save-section').classList.contains('hidden')) closeSaveSection();
+                if (!document.getElementById('overwrite-confirm-modal').classList.contains('hidden')) closeOverwriteModal();
+            }
+        });
+
+        // 🏆 명예의 전당 동기화 처리
+        window.loadLeaderboard = async function() {
+            const listEl = document.getElementById('leaderboard-list');
+            listEl.innerHTML = '<li class="py-3 text-center text-slate-400">명예의 전당 전송받는 중...</li>';
+
+            if (!currentUser) {
+                listEl.innerHTML = '<li class="py-3 text-center text-rose-500">인증 처리 대기 중</li>';
+                return;
+            }
+
+            try {
+                const querySnapshot = await getDocs(collection(db, ...rankPath));
+                
+                let rankData = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    rankData.push({ docId: doc.id, ...data });
+                });
+
+                rankData.sort((a, b) => (b.highScore || 0) - (a.highScore || 0));
+                const top10 = rankData.slice(0, 10);
+
+                listEl.innerHTML = '';
+                if (top10.length === 0) {
+                    listEl.innerHTML = '<li class="py-6 text-center text-slate-400">등록된 랭킹 기록이 없습니다.<br>첫 명예의 기록을 올려보세요!</li>';
+                    return;
+                }
+
+                top10.forEach((data, index) => {
+                    const li = document.createElement('li');
+                    li.className = "py-3 flex justify-between items-center group";
+                    let rankBadge = `<span class="w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold bg-slate-100 text-slate-600">${index + 1}</span>`;
+                    if (index === 0) rankBadge = `<span class="w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold bg-amber-100 text-amber-700 ring-2 ring-amber-400">🥇</span>`;
+                    else if (index === 1) rankBadge = `<span class="w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold bg-slate-200 text-slate-700 ring-2 ring-slate-300">🥈</span>`;
+                    else if (index === 2) rankBadge = `<span class="w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold bg-amber-50 text-amber-800 ring-2 ring-amber-200">🥉</span>`;
+
+                    li.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            ${rankBadge}
+                            <span class="font-semibold text-slate-800">${data.id}</span>
+                        </div>
+                        <span class="font-extrabold text-slate-900">${data.highScore}점</span>
+                    `;
+                    listEl.appendChild(li);
+                });
+            } catch (err) {
+                listEl.innerHTML = '<li class="py-3 text-center text-rose-500">불러오기 권한 오류</li>';
+            }
+        };
+
+        window.showModal = function(title, message) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').textContent = message;
+            const modal = document.getElementById('custom-modal');
+            modal.classList.remove('hidden');
+            document.getElementById('modal-confirm-btn').onclick = () => { modal.classList.add('hidden'); };
+        };
+
+        // 🌟 실시간 라벨 및 데이터 구조 UI 동적 치환 가동
+        window.addEventListener('load', () => {
+            if (gameMeta && rankMeta) {
+                document.getElementById('game-title-header').innerHTML = `${gameMeta.name} <span class="text-xs text-slate-400 tracking-wider font-bold">YAHTZEE!</span>`;
+                document.getElementById('leaderboard-title').innerHTML = `🏆 ${rankMeta.label} (Top 10)`;
+                document.getElementById('submit-label').textContent = `🏆 ${rankMeta.label} 등록`;
+            }
+            renderScoreTable();
+        });
+    </script>
+  <script defer src="/minigame/copyright-notice.js"></script>
+</body>
+</html>

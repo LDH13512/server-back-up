@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.vercel/
+*.log
+
+# Local environment files must never be committed.
+.env
+.env.*
+!.env.example

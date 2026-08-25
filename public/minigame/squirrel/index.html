@@ -1,0 +1,1410 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#3b2416">
+  <meta name="author" content="게시판 운영자">
+  <meta name="copyright" content="© 2026 게시판">
+  <meta name="rights" content="AI 도구를 제작 보조로 활용해 운영자가 기획·구현·편집한 자체 콘텐츠">
+  <title>다람쥐스토랑</title>
+  <script src="/_runtime/firebase-config?app=minigame"></script>
+  <script>
+    document.documentElement.classList.toggle(
+      'mobile-device',
+      navigator.userAgentData?.mobile === true ||
+        /Android|iPhone|iPad|iPod|Mobile|Silk/i.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    );
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #38261c;
+      --paper: #fffaf0;
+      --cream: #f7e8c7;
+      --orange: #e87838;
+      --orange-dark: #a94225;
+      --green: #44764b;
+      --leaf: #83a84f;
+      --gold: #f5b942;
+      --shadow: rgba(76, 42, 21, .2);
+    }
+
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: #ecd4a9; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      overflow-x: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 15% 0%, rgba(255,255,255,.78), transparent 32rem),
+        linear-gradient(155deg, #f9edcf 0%, #e6bf81 52%, #c98951 100%);
+      font-family: Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    button, input { font: inherit; }
+    button { touch-action: manipulation; }
+
+    .topbar {
+      min-height: 72px;
+      padding: 12px clamp(14px, 3vw, 34px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      color: #fffaf0;
+      background: rgba(61, 36, 22, .94);
+      border-bottom: 4px solid #d07a3b;
+      box-shadow: 0 8px 30px rgba(70, 37, 17, .25);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark {
+      width: 46px; height: 46px; flex: 0 0 46px;
+      display: grid; place-items: center;
+      border-radius: 15px;
+      background: #f5b942;
+      color: #4b2c1a;
+      box-shadow: inset 0 -5px 0 rgba(145, 69, 23, .18), 0 6px 16px rgba(0,0,0,.18);
+      font-size: 26px;
+    }
+    .brand h1 { margin: 0; font-size: clamp(20px, 3.7vw, 30px); line-height: 1; letter-spacing: -.04em; }
+    .brand p { margin: 5px 0 0; color: #e9cda9; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+    .top-actions { display: flex; gap: 8px; }
+    .icon-btn {
+      width: 42px; height: 42px;
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 13px;
+      color: #fff;
+      background: rgba(255,255,255,.09);
+      cursor: pointer;
+      transition: transform .16s, background .16s;
+    }
+    .icon-btn:hover { background: rgba(255,255,255,.18); transform: translateY(-1px); }
+
+    .shell {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: clamp(12px, 2.4vw, 28px);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      gap: 20px;
+      align-items: start;
+    }
+    .game-column { min-width: 0; }
+    .hud {
+      margin-bottom: 10px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+    .stat {
+      min-width: 0;
+      padding: 9px 8px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      border: 2px solid rgba(86, 48, 24, .12);
+      border-radius: 15px;
+      background: rgba(255, 250, 240, .9);
+      box-shadow: 0 5px 13px rgba(87, 48, 23, .09);
+    }
+    .stat-icon { font-size: 22px; filter: drop-shadow(0 2px 1px rgba(80,40,10,.15)); }
+    .stat-copy { min-width: 0; line-height: 1; }
+    .stat-copy small { display: block; margin-bottom: 5px; color: #866d58; font-size: 9px; font-weight: 900; letter-spacing: .08em; }
+    .stat-copy strong { display: block; overflow: hidden; font-size: clamp(13px, 2vw, 18px); text-overflow: ellipsis; white-space: nowrap; }
+    .stat.time.danger { color: #bb3627; animation: pulse .7s infinite alternate; }
+    @keyframes pulse { to { transform: scale(1.035); box-shadow: 0 4px 20px rgba(187,54,39,.22); } }
+
+    .game-frame {
+      position: relative;
+      overflow: hidden;
+      border: 7px solid #5a3520;
+      border-radius: 25px;
+      background: #9fc36c;
+      box-shadow: 0 20px 48px var(--shadow), inset 0 0 0 2px #c9884e;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      max-height: calc(100vh - 220px);
+      background: #9fc36c;
+      touch-action: none;
+      cursor: crosshair;
+    }
+    .overlay {
+      position: absolute; inset: 0;
+      z-index: 5;
+      padding: clamp(18px, 5vw, 48px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(50, 31, 20, .72);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      transition: opacity .25s;
+    }
+    .overlay.hidden { opacity: 0; pointer-events: none; }
+    .modal {
+      width: min(590px, 100%);
+      max-height: 100%;
+      overflow: auto;
+      padding: clamp(20px, 4vw, 34px);
+      text-align: center;
+      border: 4px solid #f4bd5d;
+      border-radius: 28px;
+      background: var(--paper);
+      box-shadow: 0 24px 70px rgba(34, 18, 10, .36), inset 0 -8px 0 #f2dfbb;
+    }
+    .hero-squirrel { font-size: clamp(58px, 10vw, 88px); line-height: 1; filter: drop-shadow(0 8px 4px rgba(99,48,19,.18)); }
+    .modal h2 { margin: 9px 0 4px; color: #713c20; font-size: clamp(27px, 5vw, 44px); letter-spacing: -.07em; }
+    .modal .eyebrow { margin: 0 0 18px; color: #c15f2c; font-size: 11px; font-weight: 950; letter-spacing: .18em; }
+    .loop-guide {
+      margin: 0 auto 19px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+    }
+    .guide-step {
+      padding: 11px 7px;
+      border: 1px solid #ead5ad;
+      border-radius: 14px;
+      background: #fff7e7;
+      font-size: 12px;
+      font-weight: 850;
+      line-height: 1.35;
+    }
+    .guide-step span { display: block; margin-bottom: 4px; font-size: 25px; }
+    .modal-note { margin: 0 0 18px; color: #765f4c; font-size: 12px; font-weight: 700; line-height: 1.55; }
+    .primary-btn {
+      min-height: 50px;
+      padding: 0 28px;
+      border: 0;
+      border-bottom: 5px solid #9f3c22;
+      border-radius: 15px;
+      color: white;
+      background: linear-gradient(135deg, #ed8844, #d65b31);
+      box-shadow: 0 9px 20px rgba(191, 74, 35, .22);
+      cursor: pointer;
+      font-weight: 950;
+      letter-spacing: -.02em;
+      transition: transform .14s, filter .14s;
+    }
+    .primary-btn:hover { filter: brightness(1.06); transform: translateY(-2px); }
+    .primary-btn:active { transform: translateY(2px); border-bottom-width: 2px; }
+    .primary-btn:disabled { opacity: .55; cursor: wait; }
+    .final-grid { margin: 14px 0 16px; display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+    .final-grid div { padding: 11px 5px; border-radius: 13px; background: #f7ead2; }
+    .final-grid small { display: block; color: #856d58; font-size: 9px; font-weight: 900; }
+    .final-grid strong { display: block; margin-top: 4px; color: #a64a28; font-size: 21px; }
+    .submit-row { margin: 0 auto 9px; display: flex; gap: 7px; max-width: 410px; }
+    .submit-row input {
+      width: 100%; min-width: 0;
+      border: 2px solid #d7bd92;
+      border-radius: 13px;
+      padding: 0 13px;
+      color: #4b3324;
+      background: #fffdf7;
+      outline: none;
+      direction: ltr;
+      unicode-bidi: plaintext;
+      text-align: left;
+      font-weight: 800;
+      -webkit-user-select: text;
+      user-select: text;
+      touch-action: auto;
+    }
+    .submit-row input:focus { border-color: #df7338; box-shadow: 0 0 0 3px rgba(223,115,56,.15); }
+    .submit-row .primary-btn { min-height: 46px; padding: 0 16px; white-space: nowrap; }
+    #submit-message { min-height: 18px; margin: 6px 0 10px; color: #8a684e; font-size: 11px; font-weight: 800; }
+    .secondary-btn { border: 0; color: #7f573e; background: transparent; cursor: pointer; font-size: 12px; font-weight: 900; text-decoration: underline; }
+
+    .hint-row {
+      padding: 9px 7px 0;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: #72543f;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .hint-row span:last-child { text-align: right; }
+
+    .rotate-notice {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2147483646;
+      padding: 28px;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #fff8e7;
+      background: radial-gradient(circle at 50% 35%, #86502f, #3b2416 72%);
+    }
+    .rotate-card { max-width: 310px; }
+    .rotate-phone {
+      display: block;
+      margin-bottom: 18px;
+      font-size: 68px;
+      transform: rotate(0deg);
+      animation: rotate-phone 1.8s ease-in-out infinite;
+    }
+    .rotate-card h2 { margin: 0 0 9px; font-size: 25px; }
+    .rotate-card p { margin: 0; color: #efd2ad; font-size: 13px; font-weight: 750; line-height: 1.65; }
+    @keyframes rotate-phone {
+      0%, 28% { transform: rotate(0deg); }
+      70%, 100% { transform: rotate(90deg); }
+    }
+
+    .side-panel {
+      overflow: hidden;
+      border: 2px solid rgba(100, 57, 28, .16);
+      border-radius: 22px;
+      background: rgba(255,250,240,.93);
+      box-shadow: 0 14px 36px rgba(76,42,21,.14);
+    }
+    .side-head { padding: 17px 18px 14px; color: white; background: linear-gradient(135deg, #5d3925, #7c4a2a); }
+    .side-head h2 { margin: 0; font-size: 18px; }
+    .side-head p { margin: 5px 0 0; color: #edd5b7; font-size: 10px; font-weight: 800; }
+    .leaderboard { min-height: 275px; padding: 12px; }
+    .rank-row {
+      margin-bottom: 7px;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: 28px minmax(0,1fr) auto;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid #ead8b9;
+      border-radius: 12px;
+      background: #fffdf8;
+    }
+    .rank-row.top { border-color: #ebbc53; background: #fff5d9; }
+    .rank-num { text-align: center; font-size: 16px; font-weight: 950; }
+    .rank-name { overflow: hidden; color: #5b402e; font-size: 12px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+    .rank-score { color: #c35b2d; font-size: 11px; font-weight: 950; }
+    .empty-rank { padding: 45px 15px; color: #9b816b; text-align: center; font-size: 12px; line-height: 1.7; }
+    .side-guide { padding: 15px 18px 19px; border-top: 1px dashed #d9bf98; }
+    .side-guide h3 { margin: 0 0 10px; font-size: 13px; }
+    .side-guide p { margin: 6px 0; color: #765e4c; font-size: 11px; font-weight: 700; line-height: 1.5; }
+
+    .toast {
+      position: fixed;
+      left: 50%; bottom: 28px;
+      z-index: 20;
+      max-width: calc(100% - 28px);
+      padding: 11px 17px;
+      border-radius: 999px;
+      color: white;
+      background: rgba(57, 37, 26, .94);
+      box-shadow: 0 10px 30px rgba(38,20,10,.3);
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 18px);
+      transition: .22s;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .help-popover {
+      position: fixed; inset: 0; z-index: 30;
+      padding: 20px;
+      display: grid; place-items: center;
+      background: rgba(49,29,18,.62);
+      backdrop-filter: blur(5px);
+    }
+    .help-popover.hidden { display: none; }
+    .help-card { width: min(430px,100%); padding: 25px; border-radius: 24px; background: #fffaf0; box-shadow: 0 25px 70px rgba(0,0,0,.3); }
+    .help-card h2 { margin: 0 0 12px; }
+    .help-card p { margin: 8px 0; color: #6f5746; font-size: 13px; font-weight: 700; line-height: 1.65; }
+    .help-card .primary-btn { width: 100%; margin-top: 12px; }
+
+    @media (max-width: 1000px) {
+      .shell { grid-template-columns: 1fr; }
+      .side-panel { display: grid; grid-template-columns: 220px 1fr; }
+      .side-head { grid-row: 1 / span 2; }
+      .leaderboard { min-height: 0; }
+    }
+    @media (max-height: 800px) and (min-width: 721px) {
+      .overlay .modal { padding: 15px 24px; }
+      .hero-squirrel { font-size: 50px; }
+      .modal h2 { margin-top: 4px; font-size: 30px; }
+      .modal .eyebrow { margin-bottom: 9px; }
+      .loop-guide { margin-bottom: 9px; }
+      .guide-step { padding: 6px 5px; }
+      .guide-step span { margin-bottom: 1px; font-size: 20px; }
+      .modal-note { margin-bottom: 9px; line-height: 1.4; }
+      .primary-btn { min-height: 44px; }
+    }
+    @media (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
+      html.mobile-device body { overflow: hidden; }
+      html.mobile-device .topbar { display: none; }
+      html.mobile-device .shell { display: block; height: 100vh; padding: 4px; }
+      html.mobile-device .game-column {
+        width: min(100%, calc((100vh - 68px) * 1.6));
+        margin: 0 auto;
+      }
+      html.mobile-device .hud { height: 45px; margin-bottom: 4px; gap: 4px; }
+      html.mobile-device .stat { padding: 4px; border-radius: 10px; }
+      html.mobile-device .stat-icon { font-size: 16px; }
+      html.mobile-device .stat-copy small { margin-bottom: 3px; font-size: 7px; }
+      html.mobile-device .stat-copy strong { font-size: 12px; }
+      html.mobile-device .game-frame { border-width: 4px; border-radius: 15px; }
+      html.mobile-device canvas { width: 100%; max-height: none; }
+      html.mobile-device .hint-row,
+      html.mobile-device .side-panel { display: none; }
+      html.mobile-device .overlay { padding: 5px; }
+      html.mobile-device .overlay .modal { padding: 7px 10px; overflow: hidden; border-width: 2px; border-radius: 14px; }
+      html.mobile-device .hero-squirrel { font-size: 28px; }
+      html.mobile-device .modal h2 { margin: 1px 0; font-size: 20px; }
+      html.mobile-device .modal .eyebrow { margin: 0 0 4px; font-size: 7px; }
+      html.mobile-device .loop-guide { margin-bottom: 4px; gap: 3px; }
+      html.mobile-device .guide-step { padding: 3px 1px; border-radius: 8px; font-size: 8px; line-height: 1.12; }
+      html.mobile-device .guide-step span { margin-bottom: 0; font-size: 13px; }
+      html.mobile-device .modal-note { margin: 0 0 4px; font-size: 8px; line-height: 1.15; }
+      html.mobile-device .primary-btn { min-height: 30px; padding: 0 13px; border-bottom-width: 3px; font-size: 10px; }
+      html.mobile-device #end-overlay .hero-squirrel,
+      html.mobile-device #end-overlay .eyebrow { display: none; }
+      html.mobile-device .final-grid { margin: 3px 0; }
+      html.mobile-device .final-grid div { padding: 3px; }
+      html.mobile-device .submit-row { height: 31px; margin: 3px auto; }
+      html.mobile-device #submit-message { min-height: 0; margin: 2px 0; font-size: 8px; }
+    }
+    @media (max-width: 720px) {
+      .topbar { min-height: 62px; padding: 9px 12px; }
+      .brand-mark { width: 40px; height: 40px; flex-basis: 40px; font-size: 23px; border-radius: 12px; }
+      .brand p { display: none; }
+      .icon-btn { width: 38px; height: 38px; }
+      .shell { padding: 10px; gap: 13px; }
+      .hud { grid-template-columns: repeat(5, minmax(0,1fr)); gap: 4px; }
+      .stat { padding: 7px 4px; gap: 3px; justify-content: center; border-radius: 11px; }
+      .stat-icon { font-size: 16px; }
+      .stat-copy small { font-size: 7px; }
+      .stat-copy strong { font-size: 12px; }
+      .game-frame { border-width: 4px; border-radius: 18px; }
+      canvas { max-height: none; }
+      .hint-row { display: none; }
+      .side-panel { display: block; }
+      .side-head { padding: 13px 15px; }
+      .leaderboard { min-height: 100px; }
+      .side-guide { display: none; }
+      .overlay { padding: 6px; }
+      .modal { padding: 8px 10px; overflow: hidden; border-width: 2px; border-radius: 15px; }
+      .hero-squirrel { font-size: 30px; }
+      .modal h2 { margin: 1px 0; font-size: 22px; }
+      .modal .eyebrow { margin: 0 0 5px; font-size: 7px; }
+      .loop-guide { margin-bottom: 4px; gap: 3px; }
+      .guide-step { padding: 3px 1px; border-radius: 8px; font-size: 8px; line-height: 1.15; }
+      .guide-step span { margin-bottom: 0; font-size: 13px; }
+      .modal-note { margin: 0 0 5px; font-size: 8px; line-height: 1.2; }
+      .primary-btn { min-height: 32px; padding: 0 14px; border-bottom-width: 3px; border-radius: 10px; font-size: 11px; }
+      #end-overlay .hero-squirrel, #end-overlay .eyebrow { display: none; }
+      #end-overlay .modal h2 { margin-bottom: 3px; font-size: 18px; }
+      .final-grid { margin: 3px 0; gap: 3px; }
+      .final-grid div { padding: 3px; border-radius: 8px; }
+      .final-grid small { font-size: 7px; }
+      .final-grid strong { margin-top: 1px; font-size: 13px; }
+      .submit-row { height: 32px; margin: 3px auto; gap: 3px; }
+      .submit-row input { padding: 0 6px; border-radius: 8px; font-size: 10px; }
+      .submit-row .primary-btn { min-height: 32px; padding: 0 7px; font-size: 9px; }
+      #submit-message { min-height: 0; margin: 2px 0; font-size: 8px; }
+      .secondary-btn { font-size: 9px; }
+    }
+    @media (max-width: 460px) {
+      .loop-guide { gap: 4px; }
+      .guide-step { padding: 8px 3px; font-size: 10px; }
+      .guide-step span { font-size: 20px; }
+      .overlay { padding: 10px; }
+      .modal { padding: 16px 13px; }
+      .final-grid strong { font-size: 17px; }
+    }
+    @media (max-width: 720px) and (orientation: portrait) and (pointer: coarse) {
+      html.mobile-device .rotate-notice { display: flex; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">🐿️</div>
+      <div>
+        <h1>다람쥐스토랑</h1>
+        <p>ACORN TO TABLE · 오늘도 도토리 한 접시!</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="sound-button" type="button" aria-label="소리 켜기">🔇</button>
+      <button class="icon-btn" id="help-button" type="button" aria-label="게임 도움말">?</button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="game-column" aria-label="다람쥐스토랑 게임">
+      <div class="hud">
+        <div class="stat"><span class="stat-icon">🌰</span><div class="stat-copy"><small>도토리</small><strong id="raw-count">0 / 4</strong></div></div>
+        <div class="stat"><span class="stat-icon">🍲</span><div class="stat-copy"><small>요리</small><strong id="dish-count">0 / 4</strong></div></div>
+        <div class="stat"><span class="stat-icon">🍃</span><div class="stat-copy"><small>순매출</small><strong id="coin-count">0</strong></div></div>
+        <div class="stat"><span class="stat-icon">🔥</span><div class="stat-copy"><small>연속 서빙</small><strong id="streak-count">0</strong></div></div>
+        <div class="stat time"><span class="stat-icon">⏱️</span><div class="stat-copy"><small>영업 시간</small><strong id="time-count">90</strong></div></div>
+      </div>
+
+      <div class="game-frame">
+        <canvas id="game" width="960" height="600" aria-label="도토리를 모아 요리하고 손님에게 서빙하는 게임"></canvas>
+
+        <div class="overlay" id="start-overlay">
+          <div class="modal">
+            <div class="hero-squirrel">🐿️</div>
+            <h2>다람쥐스토랑</h2>
+            <p class="eyebrow">FOREST-TO-TABLE MINI RESTAURANT</p>
+            <div class="loop-guide">
+              <div class="guide-step"><span>🌰</span>밭에서<br>도토리 수확</div>
+              <div class="guide-step"><span>🍳</span>주방에서<br>도토리 요리</div>
+              <div class="guide-step"><span>🪑</span>손님에게<br>빠르게 서빙</div>
+            </div>
+            <p class="modal-note">화면을 누르거나 방향키·WASD로 이동하세요. 바닥의 업그레이드 발판에 잠시 서면 더 빠르고 크게 성장합니다!</p>
+            <button class="primary-btn" id="start-button" type="button">오늘의 영업 시작!</button>
+          </div>
+        </div>
+
+        <div class="overlay hidden" id="end-overlay">
+          <div class="modal">
+            <div class="hero-squirrel" id="end-emoji">🏆</div>
+            <h2 id="end-title">영업 종료!</h2>
+            <p class="eyebrow">TODAY'S ACORN REPORT</p>
+            <div class="final-grid">
+              <div><small>순매출</small><strong id="final-score">0 🍃</strong></div>
+              <div><small>서빙 완료</small><strong id="final-served">0</strong></div>
+              <div><small>최고 연속</small><strong id="final-streak">0</strong></div>
+            </div>
+            <div class="submit-row">
+              <input id="nickname" type="text" maxlength="10" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="text" enterkeyhint="done" lang="ko" dir="ltr" placeholder="닉네임 (최대 10자)" aria-label="랭킹 닉네임">
+              <button class="primary-btn" id="submit-button" type="button">순위 등록</button>
+            </div>
+            <p id="submit-message">좋은 기록을 쥐도리 명예의 전당에 남겨보세요.</p>
+            <button class="secondary-btn" id="restart-button" type="button">한 번 더 영업하기</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="hint-row"><span>⌨️ 방향키 / WASD 이동</span><span>👆 화면을 누르면 그곳으로 달려가요</span></div>
+    </section>
+
+    <aside class="side-panel" aria-label="쥐도리 명예의 전당">
+      <div class="side-head">
+        <h2>🏆 쥐도리 TOP 10</h2>
+        <p>도토리 레스토랑 오늘의 최고 순매출</p>
+      </div>
+      <div class="leaderboard" id="leaderboard">
+        <div class="empty-rank">순위표를 불러오는 중이에요…<br>잠시만 기다려 주세요. 🌰</div>
+      </div>
+      <div class="side-guide">
+        <h3>🍂 쥐도리의 영업 메모</h3>
+        <p>① 왼쪽 도토리 밭에서 도토리를 수확해요.</p>
+        <p>② 가운데 주방에 서면 자동으로 요리해요.</p>
+        <p>③ 손님은 최대 보유량의 절반까지 주문하며, 가진 요리를 가까이서 한 번에 전달해요.</p>
+        <p>④ 극히 드물게 호랑이가 최대 바구니보다 1접시 많이 주문해요.</p>
+        <p>⑤ 화구를 업그레이드하면 도토리 요리가 더 빠르게 완성돼요.</p>
+        <p>⑥ 호출종 위에 올라가면 즉시 손님 2명을 불러요.</p>
+        <p>⑦ 업그레이드 비용과 손님 이탈 손실까지 반영한 순매출로 순위를 매겨요.</p>
+      </div>
+    </aside>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="help-popover hidden" id="help-popover">
+    <div class="help-card">
+      <h2>다람쥐스토랑 플레이법</h2>
+      <p>90초 동안 도토리 밭에서 수확하고, 주방에서 요리해 기다리는 손님에게 배달하며 순매출을 올리세요.</p>
+      <p>손님의 주문을 모두 완료할 때마다 영업시간이 1초 늘어나요.</p>
+      <p>손님은 1접시부터 현재 최대 보유량의 절반까지 무작위로 주문합니다. 최대 4접시면 1~2개, 6접시면 1~3개를 주문하며 일부 전달 시 음식 1개당 대기시간이 10%씩 회복돼요.</p>
+      <p>극히 드물게 대식가 호랑이가 찾아와 현재 최대 바구니 용량보다 1접시 많은 요리를 주문해요.</p>
+      <p>빈 테이블이 없으면 손님은 입구에 줄을 섭니다. 줄에서는 테이블보다 1.5배 오래 기다려줘요.</p>
+      <p>🔔 호출종 위에 올라가면 즉시 손님 2명이 옵니다. 종에서 내려갔다가 다시 올라가면 재사용할 수 있어요.</p>
+      <p>손님이 돌아가면 평판과 순매출 8🍃를 잃습니다. 업그레이드 비용까지 반영한 최종 순매출이 리더보드 기록이 됩니다.</p>
+      <p>화구 업그레이드는 단계마다 도토리 요리 시간을 약 22% 단축합니다.</p>
+      <button class="primary-btn" id="help-close" type="button">알겠어요!</button>
+    </div>
+  </div>
+
+  <div class="rotate-notice" role="dialog" aria-modal="true" aria-label="가로 화면 안내">
+    <div class="rotate-card">
+      <span class="rotate-phone" aria-hidden="true">📱</span>
+      <h2>가로로 돌려서 플레이해 주세요</h2>
+      <p>다람쥐스토랑은 넓은 식당 지도가 중요해요.<br>휴대폰을 가로로 돌리면 게임이 자동으로 나타납니다.</p>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const canvas = document.getElementById('game');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      const ui = {
+        raw: document.getElementById('raw-count'),
+        dishes: document.getElementById('dish-count'),
+        coins: document.getElementById('coin-count'),
+        streak: document.getElementById('streak-count'),
+        time: document.getElementById('time-count'),
+        timeCard: document.querySelector('.stat.time'),
+        start: document.getElementById('start-overlay'),
+        end: document.getElementById('end-overlay'),
+        finalScore: document.getElementById('final-score'),
+        finalServed: document.getElementById('final-served'),
+        finalStreak: document.getElementById('final-streak'),
+        endTitle: document.getElementById('end-title'),
+        endEmoji: document.getElementById('end-emoji'),
+        toast: document.getElementById('toast'),
+        submitMessage: document.getElementById('submit-message')
+      };
+
+      const acornTrees = [
+        { x: 78, y: 126, size: .62 }, { x: 188, y: 126, size: .62 }, { x: 298, y: 126, size: .62 }, { x: 408, y: 126, size: .62 },
+        { x: 78, y: 212, size: .62 }, { x: 188, y: 212, size: .62 }, { x: 298, y: 212, size: .62 }, { x: 408, y: 212, size: .62 }
+      ];
+      const tables = [
+        { x: 75, y: 405, unlocked: true },
+        { x: 225, y: 500, unlocked: true },
+        { x: 375, y: 405, unlocked: false },
+        { x: 525, y: 500, unlocked: false }
+      ];
+      const pads = [
+        { id: 'speed', x: 68, y: 245, w: 118, h: 64, title: '운동화', icon: '👟', cost: 18, level: 0, max: 3 },
+        { id: 'bag', x: 201, y: 245, w: 118, h: 64, title: '바구니', icon: '🧺', cost: 22, level: 0, max: 3 },
+        { id: 'table', x: 334, y: 245, w: 128, h: 64, title: '테이블', icon: '🪑', cost: 35, level: 0, max: 2 },
+        { id: 'stove', x: 477, y: 245, w: 118, h: 64, title: '화구', icon: '🔥', cost: 28, level: 0, max: 3 }
+      ];
+      const customerLooks = [
+        { body: '#e5a553', face: '#f7d5a3', ears: '🐰' },
+        { body: '#7aa2ca', face: '#eed0a3', ears: '🐻' },
+        { body: '#b989b4', face: '#f3d4aa', ears: '🐱' },
+        { body: '#75a76d', face: '#ead0a6', ears: '🦔' }
+      ];
+      const tigerCustomerLook = { body: '#e99a32', face: '#ffd08a', ears: '🐯' };
+      const RARE_TIGER_CHANCE = .01;
+      const CUSTOMER_FREQUENCY_MULTIPLIER = 1.3;
+      const TABLE_FREQUENCY_BONUS = .2;
+      const TABLE_PATIENCE_MULTIPLIER = .7;
+      const QUEUE_PATIENCE_MULTIPLIER = 1.5;
+      const MISSED_ORDER_PENALTY = 8;
+      const SERVICE_BELL_CUSTOMER_COUNT = 2;
+
+      let state;
+      let lastFrame = performance.now();
+      let raf = 0;
+      let audioEnabled = false;
+      let audioCtx = null;
+      let toastTimer = 0;
+      const keys = new Set();
+      const serviceBell = { x: 620, y: 365, r: 27 };
+
+      function customerFrequencyMultiplier() {
+        const tableLevel = pads.find(pad => pad.id === 'table')?.level || 0;
+        return CUSTOMER_FREQUENCY_MULTIPLIER + tableLevel * TABLE_FREQUENCY_BONUS;
+      }
+
+      function freshState() {
+        return {
+          phase: 'ready',
+          time: 90,
+          raw: 0,
+          dishes: 0,
+          capacity: 4,
+          coins: 0,
+          served: 0,
+          streak: 0,
+          bestStreak: 0,
+          reputation: 3,
+          spawnClock: 1.3 / customerFrequencyMultiplier(),
+          prepClock: 0,
+          cookSpeedMultiplier: 1,
+          padClock: 0,
+          activePad: null,
+          bellReady: true,
+          player: { x: 675, y: 345, r: 22, speed: 205, target: null, facing: 1, bob: 0 },
+          acorns: [],
+          queue: [],
+          particles: [],
+          floats: [],
+          shake: 0
+        };
+      }
+      state = freshState();
+
+      function netSalesValue() {
+        return Math.round(state.coins);
+      }
+
+      function getCookDuration() {
+        return Math.max(.16, Math.max(.28, .72 - state.served * .003) * state.cookSpeedMultiplier);
+      }
+
+      function startGame() {
+        cancelAnimationFrame(raf);
+        pads.forEach(p => {
+          p.level = 0;
+          p.cost = p.id === 'speed' ? 18 : p.id === 'bag' ? 22 : p.id === 'stove' ? 28 : 35;
+        });
+        state = freshState();
+        tables.forEach((t, i) => { t.unlocked = i < 2; t.customer = null; });
+        for (let i = 0; i < 9; i++) spawnAcorn(true);
+        state.phase = 'playing';
+        ui.start.classList.add('hidden');
+        ui.end.classList.add('hidden');
+        ui.timeCard.classList.remove('danger');
+        ui.submitMessage.textContent = '좋은 기록을 쥐도리 명예의 전당에 남겨보세요.';
+        document.getElementById('nickname').value = '';
+        document.getElementById('submit-button').disabled = false;
+        document.getElementById('submit-button').textContent = '순위 등록';
+        lastFrame = performance.now();
+        beep(520, .07, 'triangle', .05);
+        updateHud();
+        raf = requestAnimationFrame(loop);
+      }
+
+      function endGame(early = false) {
+        if (state.phase !== 'playing') return;
+        state.phase = 'ended';
+        state.time = Math.max(0, state.time);
+        const netSales = netSalesValue();
+        ui.finalScore.textContent = `${netSales.toLocaleString()} 🍃`;
+        ui.finalServed.textContent = `${state.served}접시`;
+        ui.finalStreak.textContent = `${state.bestStreak}회`;
+        ui.endTitle.textContent = early ? '평판 위기! 조기 폐점' : '오늘도 완판! 영업 종료';
+        ui.endEmoji.textContent = netSales >= 50 ? '👑' : netSales >= 20 ? '🏆' : '🐿️';
+        ui.end.classList.remove('hidden');
+        beep(early ? 150 : 660, .25, early ? 'sawtooth' : 'triangle', .07);
+      }
+
+      function spawnAcorn(initial = false) {
+        if (state.acorns.length >= 22) return;
+        const tree = acornTrees[Math.floor(Math.random() * acornTrees.length)];
+        state.acorns.push({
+          x: Math.max(38, Math.min(463, tree.x + (Math.random() - .5) * 48)),
+          y: Math.max(68, Math.min(206, tree.y - 56 + (Math.random() - .5) * 38)),
+          rot: Math.random() * 6,
+          pulse: Math.random() * 6,
+          born: initial ? 1 : 0
+        });
+      }
+
+      function createCustomer() {
+        const tablePatience = (20 + Math.random() * 9) * TABLE_PATIENCE_MULTIPLIER;
+        const queuePatience = tablePatience * QUEUE_PATIENCE_MULTIPLIER;
+        const maxOrderAmount = Math.max(1, Math.floor(state.capacity / 2));
+        const isTiger = Math.random() < RARE_TIGER_CHANCE;
+        const orderAmount = isTiger ? state.capacity + 1 : 1 + Math.floor(Math.random() * maxOrderAmount);
+        return {
+          patience: tablePatience,
+          maxPatience: tablePatience,
+          tablePatience,
+          queuePatience,
+          maxQueuePatience: queuePatience,
+          look: isTiger ? tigerCustomerLook : customerLooks[Math.floor(Math.random() * customerLooks.length)],
+          isTiger,
+          orderAmount,
+          remainingOrder: orderAmount,
+          bounce: Math.random() * 6,
+          state: 'queue',
+          eating: 0
+        };
+      }
+
+      function seatCustomer(table, customer) {
+        customer.state = 'waiting';
+        customer.patience = customer.tablePatience;
+        customer.maxPatience = customer.tablePatience;
+        table.customer = customer;
+      }
+
+      function spawnCustomer() {
+        const free = tables.filter(t => t.unlocked && !t.customer);
+        const customer = createCustomer();
+        if (free.length) seatCustomer(free[Math.floor(Math.random() * free.length)], customer);
+        else state.queue.push(customer);
+        if (customer.isTiger) {
+          showToast(`🐯 희귀 손님 등장! 바구니보다 1개 많은 ${customer.orderAmount}접시를 주문했어요.`);
+          beep(360, .08, 'triangle', .045);
+          setTimeout(() => beep(620, .12, 'triangle', .045), 90);
+        } else {
+          beep(780, .055, 'sine', .025);
+        }
+      }
+
+      function seatWaitingCustomers() {
+        const free = tables.filter(t => t.unlocked && !t.customer);
+        while (free.length && state.queue.length) seatCustomer(free.shift(), state.queue.shift());
+      }
+
+      function update(dt) {
+        if (state.phase !== 'playing') return;
+        state.time -= dt;
+        if (state.time <= 0) { endGame(false); return; }
+
+        state.spawnClock -= dt;
+        if (state.spawnClock <= 0) {
+          spawnCustomer();
+          state.spawnClock = (Math.max(2.4, 5.5 - state.served * .055) + Math.random() * 1.8) / customerFrequencyMultiplier();
+        }
+
+        if (state.acorns.length < 16 && Math.random() < dt * 1.7) spawnAcorn();
+        state.acorns.forEach(a => { a.pulse += dt * 3; a.born = Math.min(1, a.born + dt * 3); });
+        state.player.bob += dt * 8;
+        updateMovement(dt);
+        handleWorldInteractions(dt);
+        seatWaitingCustomers();
+        updateQueue(dt);
+        updateTables(dt);
+        updateEffects(dt);
+        state.shake = Math.max(0, state.shake - dt * 18);
+        updateHud();
+      }
+
+      function updateMovement(dt) {
+        const p = state.player;
+        let dx = 0, dy = 0;
+        if (keys.has('ArrowLeft') || keys.has('a')) dx -= 1;
+        if (keys.has('ArrowRight') || keys.has('d')) dx += 1;
+        if (keys.has('ArrowUp') || keys.has('w')) dy -= 1;
+        if (keys.has('ArrowDown') || keys.has('s')) dy += 1;
+
+        if (dx || dy) {
+          p.target = null;
+          const mag = Math.hypot(dx, dy);
+          dx /= mag; dy /= mag;
+        } else if (p.target) {
+          const tx = p.target.x - p.x;
+          const ty = p.target.y - p.y;
+          const dist = Math.hypot(tx, ty);
+          if (dist < 7) p.target = null;
+          else { dx = tx / dist; dy = ty / dist; }
+        }
+
+        if (dx || dy) {
+          p.x += dx * p.speed * dt;
+          p.y += dy * p.speed * dt;
+          p.facing = dx < -.05 ? -1 : dx > .05 ? 1 : p.facing;
+          if (Math.random() < dt * 10) addParticle(p.x, p.y + 20, '#e6d09b', 1, 1.2);
+        }
+        p.x = Math.max(27, Math.min(W - 27, p.x));
+        p.y = Math.max(30, Math.min(H - 25, p.y));
+      }
+
+      function handleWorldInteractions(dt) {
+        const p = state.player;
+
+        for (let i = state.acorns.length - 1; i >= 0; i--) {
+          const a = state.acorns[i];
+          if (Math.hypot(p.x - a.x, p.y - a.y) < 38 && state.raw < state.capacity) {
+            state.acorns.splice(i, 1);
+            state.raw += 1;
+            popText(p.x, p.y - 28, '+1 🌰', '#86461e');
+            burst(a.x, a.y, '#f1b44d', 5);
+            beep(640 + state.raw * 35, .045, 'sine', .035);
+          }
+        }
+
+        const atKitchen = p.x > 515 && p.x < 654 && p.y > 100 && p.y < 270;
+        if (atKitchen && state.raw > 0 && state.dishes < state.capacity) {
+          state.prepClock += dt;
+          if (state.prepClock >= getCookDuration()) {
+            state.prepClock = 0;
+            state.raw -= 1;
+            state.dishes += 1;
+            popText(585, 116, '+1 🍲', '#a7462d');
+            burst(582, 171, '#ffd26d', 7);
+            beep(410, .055, 'triangle', .035);
+          }
+        } else {
+          state.prepClock = Math.max(0, state.prepClock - dt * 1.8);
+        }
+
+        const touchingPad = pads.find(pad =>
+          p.x > pad.x && p.x < pad.x + pad.w && p.y > pad.y && p.y < pad.y + pad.h && pad.level < pad.max
+        );
+        const touchingBell = Math.hypot(p.x-serviceBell.x,p.y-serviceBell.y) <= serviceBell.r+8;
+        if (touchingPad) {
+          if (state.coins >= touchingPad.cost) {
+            if (state.activePad !== touchingPad.id) { state.activePad = touchingPad.id; state.padClock = 0; }
+            state.padClock += dt;
+            if (state.padClock >= .8) buyUpgrade(touchingPad);
+          } else {
+            state.activePad = touchingPad.id;
+            state.padClock = 0;
+          }
+        } else if (touchingBell && state.bellReady) {
+          ringServiceBell();
+        } else {
+          if (!touchingBell) state.bellReady = true;
+          state.activePad = null;
+          state.padClock = 0;
+        }
+      }
+
+      function buyUpgrade(pad) {
+        const previousFrequency = customerFrequencyMultiplier();
+        state.coins -= pad.cost;
+        pad.level += 1;
+        if (pad.id === 'speed') state.player.speed += 32;
+        if (pad.id === 'bag') state.capacity += 2;
+        if (pad.id === 'stove') state.cookSpeedMultiplier *= .78;
+        if (pad.id === 'table') {
+          const locked = tables.find(t => !t.unlocked);
+          if (locked) locked.unlocked = true;
+          state.spawnClock *= previousFrequency / customerFrequencyMultiplier();
+        }
+        pad.cost = Math.round(pad.cost * 1.7);
+        state.padClock = 0;
+        state.activePad = null;
+        burst(pad.x + pad.w / 2, pad.y + 15, '#f5b942', 18);
+        popText(pad.x + pad.w / 2, pad.y - 7, '업그레이드!', '#a54827');
+        showToast(`${pad.icon} ${pad.title} 업그레이드 완료!`);
+        beep(520, .07, 'triangle', .05);
+        setTimeout(() => beep(740, .1, 'triangle', .045), 70);
+      }
+
+      function loseCustomer(x, y, message) {
+        if (state.phase !== 'playing') return;
+        state.reputation = Math.max(0, state.reputation - 1);
+        state.streak = 0;
+        state.coins -= MISSED_ORDER_PENALTY;
+        state.shake = 9;
+        popText(x, y - 34, `-${MISSED_ORDER_PENALTY} 🍃`, '#b7352c');
+        showToast(`${message} 순매출 -${MISSED_ORDER_PENALTY}🍃 · 평판 ${'❤️'.repeat(state.reputation)}${'🖤'.repeat(3-state.reputation)}`);
+        beep(145, .16, 'sawtooth', .055);
+        if (state.reputation <= 0) endGame(true);
+      }
+
+      function updateQueue(dt) {
+        for (let i = state.queue.length - 1; i >= 0; i--) {
+          const customer = state.queue[i];
+          customer.bounce += dt * 5;
+          customer.queuePatience -= dt;
+          if (customer.queuePatience <= 0) {
+            const position = getQueuePosition(i);
+            state.queue.splice(i, 1);
+            loseCustomer(position.x, position.y, '줄을 서던 손님이 돌아갔어요.');
+            if (state.phase !== 'playing') return;
+          }
+        }
+      }
+
+      function updateTables(dt) {
+        for (const table of tables) {
+          const c = table.customer;
+          if (!c) continue;
+          c.bounce += dt * 5;
+
+          if (c.state === 'eating') {
+            c.eating -= dt;
+            if (c.eating <= 0) table.customer = null;
+            continue;
+          }
+
+          c.patience -= dt;
+          if (c.patience <= 0) {
+            table.customer = null;
+            loseCustomer(table.x, table.y - 18, '주문을 못 받은 손님이 돌아갔어요.');
+            continue;
+          }
+
+          if (state.dishes > 0 && Math.hypot(state.player.x - table.x, state.player.y - table.y) < 68) {
+            const delivered = Math.min(state.dishes, c.remainingOrder);
+            state.dishes -= delivered;
+            c.remainingOrder -= delivered;
+            c.patience = Math.min(c.maxPatience, c.patience + c.maxPatience * .1 * delivered);
+            const dishRevenue = delivered * 5;
+            state.coins += dishRevenue;
+            popText(table.x, table.y - 58, `+${dishRevenue} 🍃 · ${delivered}접시`, '#4f7e38');
+            burst(table.x, table.y, '#f5b942', 12);
+            beep(620 + Math.min(220, delivered * 22), .07, 'triangle', .045);
+
+            if (c.remainingOrder <= 0) {
+              c.state = 'eating';
+              c.eating = .8;
+              state.served += 1;
+              state.streak += 1;
+              state.bestStreak = Math.max(state.bestStreak, state.streak);
+              const completionBonus = 4 + Math.min(9, state.streak);
+              state.coins += completionBonus;
+              state.time += 1;
+              popText(table.x, table.y - 79, `완료 +${completionBonus} 🍃 · ⏱ +1초`, '#a64a28');
+            }
+          }
+        }
+      }
+
+      function updateEffects(dt) {
+        for (let i = state.particles.length - 1; i >= 0; i--) {
+          const p = state.particles[i];
+          p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 38 * dt; p.life -= dt;
+          if (p.life <= 0) state.particles.splice(i, 1);
+        }
+        for (let i = state.floats.length - 1; i >= 0; i--) {
+          const f = state.floats[i];
+          f.y -= 34 * dt; f.life -= dt;
+          if (f.life <= 0) state.floats.splice(i, 1);
+        }
+      }
+
+      function updateHud() {
+        ui.raw.textContent = `${state.raw} / ${state.capacity}`;
+        ui.dishes.textContent = `${state.dishes} / ${state.capacity}`;
+        ui.coins.textContent = state.coins.toLocaleString();
+        ui.streak.textContent = state.streak;
+        ui.time.textContent = Math.max(0, Math.ceil(state.time));
+        ui.timeCard.classList.toggle('danger', state.phase === 'playing' && state.time <= 15);
+      }
+
+      function loop(now) {
+        const dt = Math.min(.034, (now - lastFrame) / 1000);
+        lastFrame = now;
+        update(dt);
+        draw();
+        if (state.phase === 'playing') raf = requestAnimationFrame(loop);
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        ctx.save();
+        if (state.shake > 0) ctx.translate((Math.random()-.5)*state.shake, (Math.random()-.5)*state.shake);
+        drawGround();
+        drawAcornField();
+        drawKitchen();
+        drawQueueArea();
+        drawPads();
+        tables.forEach(drawTable);
+        drawQueue();
+        state.acorns.forEach(drawAcornPickup);
+        drawServiceBell();
+        drawPlayer(state.player);
+        drawEffects();
+        drawTopLabels();
+        ctx.restore();
+      }
+
+      function roundRect(x, y, w, h, r, fill, stroke, line = 1) {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, r);
+        if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+        if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = line; ctx.stroke(); }
+      }
+
+      function drawGround() {
+        ctx.fillStyle = '#94b966'; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = 'rgba(255,255,255,.11)';
+        for (let y = 16; y < H; y += 36) {
+          for (let x = (y/36%2)*18; x < W; x += 36) {
+            ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI*2); ctx.fill();
+          }
+        }
+        ctx.fillStyle = '#d9bf85'; ctx.fillRect(0, 315, 960, 16);
+        ctx.fillStyle = '#c9a970';
+        for (let x = 0; x < 960; x += 28) ctx.fillRect(x, 319, 16, 4);
+      }
+
+      function drawAcornField() {
+        roundRect(18, 20, 465, 213, 22, '#d9ad69', '#6e4329', 5);
+        roundRect(31, 62, 439, 70, 16, '#9a623b', '#794527', 3);
+        roundRect(31, 148, 439, 70, 16, '#9a623b', '#794527', 3);
+        ctx.strokeStyle = 'rgba(246,215,151,.32)';
+        ctx.lineWidth = 3;
+        for (let x = 48; x < 466; x += 43) {
+          ctx.beginPath(); ctx.moveTo(x, 69); ctx.lineTo(x, 125); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(x, 155); ctx.lineTo(x, 211); ctx.stroke();
+        }
+        acornTrees.forEach(drawFieldTree);
+        roundRect(148, 29, 205, 35, 15, '#6d482b', '#4e321f', 3);
+        ctx.fillStyle = '#fff4d2';
+        ctx.font = '900 16px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('🌰 도토리 밭 · 자동 수확', 250, 52);
+      }
+
+      function drawFieldTree(tree) {
+        ctx.save();
+        ctx.translate(tree.x, tree.y);
+        ctx.scale(tree.size, tree.size);
+        ctx.fillStyle = 'rgba(64,35,20,.2)';
+        ctx.beginPath(); ctx.ellipse(0, 4, 35, 10, 0, 0, Math.PI * 2); ctx.fill();
+        roundRect(-9, -48, 18, 52, 7, '#704224', '#53301e', 3);
+        ctx.strokeStyle = '#704224';
+        ctx.lineWidth = 7;
+        ctx.beginPath(); ctx.moveTo(0, -35); ctx.lineTo(-19, -55); ctx.moveTo(1, -37); ctx.lineTo(21, -58); ctx.stroke();
+        ctx.fillStyle = '#355d3b';
+        [[-24,-55,27],[22,-57,29],[0,-78,33]].forEach(([x,y,r]) => {
+          ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+        });
+        ctx.fillStyle = '#648c49';
+        [[-25,-65,17],[17,-72,19],[-3,-91,20]].forEach(([x,y,r]) => {
+          ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+        });
+        ctx.fillStyle = '#91ad58';
+        ctx.beginPath(); ctx.arc(-7, -88, 10, 0, Math.PI * 2); ctx.fill();
+        [[-18,-58],[12,-76],[25,-53]].forEach(([x,y]) => {
+          ctx.fillStyle = '#a85d2d';
+          ctx.beginPath(); ctx.ellipse(x, y + 3, 5, 7, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#5e3924';
+          ctx.beginPath(); ctx.ellipse(x, y, 6, 3, 0, 0, Math.PI * 2); ctx.fill();
+        });
+        ctx.restore();
+      }
+
+      function drawKitchen() {
+        roundRect(493, 20, 150, 213, 22, '#f6e7c4', '#6e4329', 5);
+        roundRect(503, 54, 132, 171, 17, '#c7703e', '#6e4329', 4);
+        roundRect(520, 88, 97, 117, 12, '#f5d997', '#8d4b2a', 3);
+        ctx.fillStyle = '#4e3325'; ctx.fillRect(532, 139, 74, 10);
+        for (let i = 0; i < 3; i++) {
+          ctx.fillStyle = i === 1 ? '#df6d43' : '#6d4a34';
+          ctx.beginPath(); ctx.arc(545 + i*28, 169, 9, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.fillStyle = '#fff1cf'; ctx.font = '900 16px system-ui'; ctx.textAlign = 'center';
+        ctx.fillText('도토리 주방', 569, 77);
+        if (state.phase === 'playing' && state.raw > 0 && state.dishes < state.capacity) {
+          const progress = Math.min(1, state.prepClock / getCookDuration());
+          roundRect(533, 212, 70, 8, 4, '#8d4b2a');
+          roundRect(533, 212, 70*progress, 8, 4, '#ffd260');
+        }
+      }
+
+      function drawQueueArea() {
+        roundRect(658, 18, 286, 557, 24, '#7fa45d', '#4e713d', 4);
+        roundRect(678, 31, 246, 43, 17, '#4f633b', '#394b2e', 3);
+        ctx.fillStyle = '#fff9e8';
+        ctx.font = '900 16px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText(`🚪 손님 대기 줄 · ${state.queue.length}명`, 801, 58);
+
+        roundRect(681, 88, 240, 392, 20, 'rgba(243,224,170,.24)', 'rgba(255,246,215,.42)', 3);
+        ctx.setLineDash([7, 9]);
+        ctx.strokeStyle = 'rgba(255,246,215,.42)';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(789, 93); ctx.lineTo(789, 476); ctx.stroke();
+        ctx.setLineDash([]);
+        for (let i = 0; i < 8; i++) {
+          const position = getQueuePosition(i);
+          ctx.fillStyle = 'rgba(255,246,215,.18)';
+          ctx.beginPath(); ctx.arc(position.x, position.y, 26, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = 'rgba(255,249,232,.56)';
+          ctx.font = '900 11px system-ui';
+          ctx.fillText(`${i + 1}`, position.x, position.y + 4);
+        }
+        roundRect(693, 508, 216, 43, 16, '#6d482b', '#4e321f', 3);
+        ctx.fillStyle = '#fff4d2';
+        ctx.font = '900 14px system-ui';
+        ctx.fillText('← 빈 테이블로 차례차례 입장', 801, 535);
+      }
+
+      function drawPads() {
+        pads.forEach(pad => {
+          const maxed = pad.level >= pad.max;
+          const affordable = state.coins >= pad.cost;
+          const effect = pad.id === 'bag' ? '부가: 손님 주문량 ↑' : pad.id === 'table' ? '부가: 방문 빈도 ↑' : '';
+          roundRect(pad.x, pad.y, pad.w, pad.h, 15, maxed ? '#b9aa8e' : affordable ? '#ffe19a' : '#d8c49d', maxed ? '#8f826d' : '#aa6835', 3);
+          ctx.textAlign = 'center'; ctx.fillStyle = '#4d3526'; ctx.font = '900 17px system-ui'; ctx.fillText(`${pad.icon} ${pad.title}`, pad.x+pad.w/2, pad.y+(effect ? 20 : 24));
+          ctx.font = '800 11px system-ui'; ctx.fillStyle = maxed ? '#776b59' : affordable ? '#a44525' : '#7c6955';
+          ctx.fillText(maxed ? '최대 레벨' : `${pad.cost} 🍃 · Lv.${pad.level}`, pad.x+pad.w/2, pad.y+(effect ? 38 : 44));
+          if (effect) {
+            ctx.fillStyle = '#6c5845'; ctx.font = '800 8px system-ui';
+            ctx.fillText(effect, pad.x+pad.w/2, pad.y+54);
+          }
+          if (state.activePad === pad.id && !maxed && affordable) {
+            roundRect(pad.x+11, pad.y+57, pad.w-22, 4, 2, '#9a714e');
+            roundRect(pad.x+11, pad.y+57, (pad.w-22)*Math.min(1,state.padClock/.8), 4, 2, '#e65f33');
+          }
+        });
+      }
+
+      function drawServiceBell() {
+        const { x, y, r } = serviceBell;
+        const active = state.phase === 'playing';
+        ctx.save();
+        ctx.globalAlpha = active ? 1 : .58;
+        ctx.shadowColor = 'rgba(86,50,28,.28)'; ctx.shadowBlur = 9; ctx.shadowOffsetY = 4;
+        roundRect(x-r, y-r, r*2, r*2, 15, '#ffe3a1', '#8c512f', 3);
+        ctx.shadowColor = 'transparent';
+        ctx.textAlign = 'center'; ctx.font = '25px "Apple Color Emoji", "Segoe UI Emoji", system-ui';
+        ctx.fillText('🔔', x, y+7);
+        ctx.fillStyle = '#9f4729'; ctx.font = '900 8px system-ui'; ctx.fillText('+2', x+16, y+20);
+        ctx.restore();
+      }
+
+      function ringServiceBell() {
+        if (state.phase !== 'playing') return;
+        for (let index=0; index<SERVICE_BELL_CUSTOMER_COUNT; index++) state.queue.push(createCustomer());
+        state.bellReady = false;
+        state.activePad = null;
+        state.padClock = 0;
+        showToast(`🔔 손님 ${SERVICE_BELL_CUSTOMER_COUNT}명을 불렀어요!`);
+        beep(880,.08,'triangle',.055);
+        setTimeout(() => beep(1120,.12,'triangle',.05), 80);
+      }
+
+      function getQueuePosition(index) {
+        return {
+          x: 725 + (index % 2) * 128,
+          y: 127 + Math.floor(index / 2) * 94
+        };
+      }
+
+      function drawQueue() {
+        state.queue.slice(0, 8).forEach((customer, index) => {
+          const position = getQueuePosition(index);
+          const bob = Math.sin(customer.bounce) * 2;
+          ctx.save();
+          ctx.translate(position.x, position.y + bob);
+          ctx.fillStyle = 'rgba(72,43,25,.16)';
+          ctx.beginPath(); ctx.ellipse(0, 18, 21, 7, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.font = '29px system-ui'; ctx.textAlign = 'center'; ctx.fillText(customer.look.ears, 0, 10);
+          ctx.font = '13px system-ui'; ctx.fillText('⏳', 21, -9);
+          const pct = Math.max(0, customer.queuePatience / customer.maxQueuePatience);
+          roundRect(-20, 19, 40, 5, 3, '#6c4b37');
+          roundRect(-20, 19, 40 * pct, 5, 3, pct > .5 ? '#6fb452' : pct > .25 ? '#f0a13a' : '#d84531');
+          ctx.restore();
+        });
+
+        if (state.queue.length > 8) {
+          roundRect(777, 467, 48, 27, 12, '#74462d');
+          ctx.fillStyle = '#fff9e8'; ctx.font = '900 12px system-ui'; ctx.textAlign = 'center';
+          ctx.fillText(`+${state.queue.length - 8}명`, 801, 485);
+        }
+      }
+
+      function drawTable(table, index) {
+        if (!table.unlocked) {
+          ctx.save(); ctx.globalAlpha = .45;
+          roundRect(table.x-54, table.y-35, 108, 70, 19, '#746c5a', '#554f43', 3);
+          ctx.fillStyle = '#fff'; ctx.font = '900 22px system-ui'; ctx.textAlign = 'center'; ctx.fillText('🔒', table.x, table.y+8);
+          ctx.restore(); return;
+        }
+        ctx.fillStyle = 'rgba(88,51,28,.15)'; ctx.beginPath(); ctx.ellipse(table.x, table.y+31, 63, 19, 0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#7e4d2e'; ctx.fillRect(table.x-7, table.y+10, 14, 37);
+        roundRect(table.x-55, table.y-29, 110, 58, 22, '#eec477', '#714329', 4);
+        ctx.fillStyle = '#fff0cb'; ctx.beginPath(); ctx.ellipse(table.x, table.y, 35, 18, 0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#9e6337'; ctx.font = '800 11px system-ui'; ctx.textAlign = 'center'; ctx.fillText(`TABLE ${index+1}`, table.x, table.y+4);
+
+        if (!table.customer) return;
+        const c = table.customer;
+        const bob = Math.sin(c.bounce)*2;
+        ctx.save(); ctx.translate(table.x, table.y-53+bob);
+        ctx.font = '28px system-ui'; ctx.textAlign = 'center'; ctx.fillText(c.look.ears, 0, 0);
+        if (c.state === 'waiting') {
+          roundRect(22, -31, 62, 34, 13, '#fffdf5', '#6e4931', 2);
+          ctx.fillStyle = '#5c3824';
+          ctx.font = '900 14px system-ui'; ctx.fillText(`🍲 ×${c.remainingOrder}`, 53, -9);
+          const pct = Math.max(0, c.patience/c.maxPatience);
+          roundRect(-31, 12, 62, 7, 4, '#6c4b37');
+          roundRect(-31, 12, 62*pct, 7, 4, pct>.5 ? '#6fb452' : pct>.25 ? '#f0a13a' : '#d84531');
+        } else {
+          ctx.font = '18px system-ui'; ctx.fillText('😋', 0, 25);
+        }
+        ctx.restore();
+      }
+
+      function drawAcornPickup(a) {
+        ctx.save(); ctx.translate(a.x, a.y + Math.sin(a.pulse)*2); ctx.scale(a.born,a.born); ctx.rotate(Math.sin(a.rot)*.12);
+        drawAcorn(0,0,1);
+        ctx.restore();
+      }
+
+      function drawAcorn(x,y,s=1) {
+        ctx.save(); ctx.translate(x,y); ctx.scale(s,s);
+        ctx.fillStyle = 'rgba(69,35,18,.16)'; ctx.beginPath(); ctx.ellipse(0,12,12,5,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#a85d2d'; ctx.beginPath(); ctx.ellipse(0,2,10,13,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#6b3c25'; ctx.beginPath(); ctx.ellipse(0,-5,12,6,0,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#4d2b1c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(1,-10); ctx.quadraticCurveTo(7,-16,8,-18); ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawPlayer(p) {
+        const moving = keys.size > 0 || p.target;
+        const bob = moving ? Math.sin(p.bob)*3 : 0;
+        ctx.save(); ctx.translate(p.x,p.y+bob); ctx.scale(p.facing,1);
+        // tail
+        ctx.fillStyle = '#a95b2e'; ctx.beginPath(); ctx.ellipse(-25,-8,23,34,-.55,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#d98443'; ctx.beginPath(); ctx.ellipse(-27,-11,14,24,-.55,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#8c4829'; ctx.beginPath(); ctx.arc(0,3,21,0,Math.PI*2); ctx.fill();
+        // ears/head
+        ctx.fillStyle = '#8c4829'; ctx.beginPath(); ctx.moveTo(-14,-22); ctx.lineTo(-12,-40); ctx.lineTo(-2,-25); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(8,-24); ctx.lineTo(15,-39); ctx.lineTo(18,-18); ctx.fill();
+        ctx.beginPath(); ctx.arc(3,-16,20,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#f1c28c'; ctx.beginPath(); ctx.ellipse(9,-10,13,10,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#2d2019'; ctx.beginPath(); ctx.arc(10,-21,2.7,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(21,-11,3,0,Math.PI*2); ctx.fill();
+        // apron
+        ctx.fillStyle = '#fff4d2'; ctx.beginPath(); ctx.moveTo(-12,-4); ctx.lineTo(16,-3); ctx.lineTo(12,21); ctx.lineTo(-14,20); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#dc6535'; ctx.fillRect(-10,7,20,9);
+        // feet
+        ctx.fillStyle = '#5d3322'; ctx.beginPath(); ctx.ellipse(-11,22,10,5,0,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(12,22,10,5,0,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+
+        // carried stack
+        ctx.save(); ctx.translate(p.x, p.y-52+bob);
+        if (state.dishes > 0) {
+          for (let i=0;i<Math.min(state.dishes,5);i++) {
+            ctx.fillStyle='#fff6df'; ctx.beginPath(); ctx.ellipse(0,-i*5,18,6,0,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='#c66b38'; ctx.stroke();
+          }
+          ctx.font='14px system-ui'; ctx.textAlign='center'; ctx.fillText('🍲',0,-Math.min(state.dishes,5)*5-5);
+        } else if (state.raw > 0) {
+          for (let i=0;i<Math.min(state.raw,5);i++) drawAcorn((i%2)*11-5, -Math.floor(i/2)*13, .58);
+        }
+        ctx.restore();
+      }
+
+      function drawEffects() {
+        state.particles.forEach(p => {
+          ctx.save(); ctx.globalAlpha = Math.max(0,p.life); ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill(); ctx.restore();
+        });
+        state.floats.forEach(f => {
+          ctx.save(); ctx.globalAlpha=Math.min(1,f.life*2); ctx.fillStyle=f.color; ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=4; ctx.font='900 16px system-ui'; ctx.textAlign='center'; ctx.strokeText(f.text,f.x,f.y); ctx.fillText(f.text,f.x,f.y); ctx.restore();
+        });
+      }
+
+      function drawTopLabels() {
+        roundRect(17, H - 50, 177, 33, 14, 'rgba(61,54,40,.78)');
+        ctx.fillStyle='#fff9e8'; ctx.font='900 13px system-ui'; ctx.textAlign='center'; ctx.fillText(`평판 ${'❤️'.repeat(state.reputation)}${'♡'.repeat(3-state.reputation)}`,105,H - 28);
+      }
+
+      function addParticle(x,y,color,life=1,size=3) {
+        state.particles.push({ x,y,color,life,size,vx:(Math.random()-.5)*18,vy:-Math.random()*12 });
+      }
+      function burst(x,y,color,count) {
+        for (let i=0;i<count;i++) state.particles.push({ x,y,color,life:.55+Math.random()*.45,size:2+Math.random()*4,vx:(Math.random()-.5)*100,vy:-30-Math.random()*80 });
+      }
+      function popText(x,y,text,color) { state.floats.push({x,y,text,color,life:1.15}); }
+      function showToast(message) {
+        ui.toast.textContent = message; ui.toast.classList.add('show');
+        clearTimeout(toastTimer); toastTimer = setTimeout(()=>ui.toast.classList.remove('show'),2100);
+      }
+
+      function beep(freq,duration,type='sine',volume=.04) {
+        if (!audioEnabled) return;
+        try {
+          audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();
+          if (audioCtx.state==='suspended') audioCtx.resume();
+          const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
+          osc.type=type; osc.frequency.value=freq; gain.gain.setValueAtTime(volume,audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);
+          osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+duration);
+        } catch (_) {}
+      }
+
+      function setCanvasTarget(event) {
+        if (state.phase !== 'playing') return;
+        const rect=canvas.getBoundingClientRect();
+        const point=event.touches ? event.touches[0] : event;
+        const x=(point.clientX-rect.left)*W/rect.width;
+        const y=(point.clientY-rect.top)*H/rect.height;
+        state.player.target={ x, y };
+        event.preventDefault();
+      }
+
+      canvas.addEventListener('pointerdown', setCanvasTarget);
+      window.addEventListener('keydown', event => {
+        if (event.isComposing || event.key === 'Process' || event.target instanceof HTMLInputElement) return;
+        const k=event.key.length===1 ? event.key.toLowerCase() : event.key;
+        if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','s','d','w'].includes(k)) { keys.add(k); event.preventDefault(); }
+        if (event.key==='Escape') document.getElementById('help-popover').classList.add('hidden');
+      }, {passive:false});
+      window.addEventListener('keyup', event => {
+        if (event.isComposing || event.key === 'Process' || event.target instanceof HTMLInputElement) return;
+        keys.delete(event.key.length===1 ? event.key.toLowerCase() : event.key);
+      });
+      window.addEventListener('blur', () => keys.clear());
+
+      document.getElementById('start-button').addEventListener('click', startGame);
+      document.getElementById('restart-button').addEventListener('click', startGame);
+      document.getElementById('sound-button').addEventListener('click', event => {
+        audioEnabled=!audioEnabled; event.currentTarget.textContent=audioEnabled?'🔊':'🔇'; event.currentTarget.setAttribute('aria-label',audioEnabled?'소리 끄기':'소리 켜기');
+        if (audioEnabled) beep(600,.08,'triangle',.05);
+      });
+      document.getElementById('help-button').addEventListener('click',()=>document.getElementById('help-popover').classList.remove('hidden'));
+      document.getElementById('help-close').addEventListener('click',()=>document.getElementById('help-popover').classList.add('hidden'));
+      document.getElementById('help-popover').addEventListener('pointerdown',event=>{if(event.target.id==='help-popover') event.currentTarget.classList.add('hidden');});
+
+      const nicknameInput=document.getElementById('nickname');
+      nicknameInput.addEventListener('keydown', event => event.stopPropagation());
+      nicknameInput.addEventListener('keyup', event => event.stopPropagation());
+
+      document.getElementById('submit-button').addEventListener('click', async event => {
+        const nickname=nicknameInput.value.normalize('NFC').trim();
+        if (!nickname) { ui.submitMessage.textContent='닉네임을 입력해 주세요!'; return; }
+        const button=event.currentTarget; button.disabled=true; button.textContent='등록 중…';
+        try {
+          const netSales=netSalesValue();
+          const result=await window.SquirrelLeaderboard.submit(nickname,netSales,{served:state.served,bestStreak:state.bestStreak,netSales});
+          ui.submitMessage.textContent=result || '쥐도리 명예의 전당에 등록됐어요! 👑';
+          button.textContent='등록 완료';
+        } catch (error) {
+          ui.submitMessage.textContent=error?.message || '등록에 실패했어요. 잠시 후 다시 시도해 주세요.';
+          button.disabled=false; button.textContent='다시 등록';
+        }
+      });
+
+      window.renderSquirrelLeaderboard = scores => {
+        const container=document.getElementById('leaderboard');
+        if (!scores.length) { container.innerHTML='<div class="empty-rank">아직 등록된 기록이 없어요.<br>첫 번째 쥐도리가 되어보세요! 🌰</div>'; return; }
+        container.innerHTML=scores.slice(0,10).map((item,index)=>{
+          const medal=['🥇','🥈','🥉'][index] || index+1;
+          return `<div class="rank-row ${index<3?'top':''}"><span class="rank-num">${medal}</span><span class="rank-name">${escapeHtml(item.nickname)}</span><span class="rank-score">${Number(item.score).toLocaleString()} 🍃</span></div>`;
+        }).join('');
+      };
+      function escapeHtml(value) { const div=document.createElement('div'); div.textContent=String(value); return div.innerHTML; }
+      window.SquirrelLeaderboard = { submit: async()=>{ throw new Error('순위 서버에 연결 중이에요. 잠시 후 다시 눌러 주세요.'); } };
+
+      for (let i=0;i<9;i++) spawnAcorn(true);
+      updateHud(); draw();
+    })();
+  </script>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+    import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+    import { getFirestore, collection, doc, addDoc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+    const rankPath=['artifacts','squirrel','public','data','leaderboard_net'];
+    const config=window.__PLAYGROUND_FIREBASE_MINIGAME_CONFIG__ || (()=>{
+      try { return window._mg_fbc ? JSON.parse(atob(window._mg_fbc)) : null; } catch (_) { return null; }
+    })();
+
+    if (!config) {
+      window.renderSquirrelLeaderboard([]);
+    } else {
+      try {
+        const app=initializeApp(config);
+        const auth=getAuth(app);
+        const db=getFirestore(app);
+        let scores=[];
+
+        onAuthStateChanged(auth,user=>{
+          if (!user) return;
+          onSnapshot(collection(db,...rankPath),snapshot=>{
+            scores=snapshot.docs.map(item=>({id:item.id,...item.data()})).filter(item=>item.nickname && Number.isFinite(Number(item.score))).sort((a,b)=>Number(b.score)-Number(a.score));
+            window.renderSquirrelLeaderboard(scores);
+          },()=>window.renderSquirrelLeaderboard([]));
+        });
+
+        await signInAnonymously(auth);
+        window.SquirrelLeaderboard.submit=async(nickname,score,details)=>{
+          if (!auth.currentUser) await signInAnonymously(auth);
+          const same=scores.find(item=>String(item.nickname).trim().toLowerCase()===nickname.toLowerCase());
+          if (same && Number(same.score)>=score) throw new Error(`기존 최고 순매출 ${Number(same.score).toLocaleString()}🍃보다 높을 때 갱신할 수 있어요.`);
+          const payload={nickname,score,...details,timestamp:Date.now(),userId:auth.currentUser.uid};
+          if (same) await setDoc(doc(db,...rankPath,same.id),payload);
+          else await addDoc(collection(db,...rankPath),payload);
+          return same ? '기존 최고 기록을 멋지게 갱신했어요! 👑' : '쥐도리 명예의 전당에 등록됐어요! 👑';
+        };
+      } catch (error) {
+        console.error('다람쥐스토랑 순위표 연결 실패:',error);
+        window.renderSquirrelLeaderboard([]);
+      }
+    }
+  </script>
+  <script defer src="/minigame/copyright-notice.js"></script>
+</body>
+</html>

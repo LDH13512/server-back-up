@@ -1,0 +1,69 @@
+name: Deploy Backup to Vercel
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-vercel-production
+  cancel-in-progress: false
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_TOKEN: ${{ secrets.BACKUP_VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.BACKUP_VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.BACKUP_VERCEL_PROJECT_ID }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run test suite
+        run: |
+          node --test tests/*.test.mjs
+
+      - name: Validate minigames
+        run: |
+          npm run minigames:check
+
+      - name: Validate deployment secrets
+        shell: bash
+        run: |
+          test -n "$VERCEL_TOKEN" || { echo "Missing VERCEL_TOKEN"; exit 1; }
+          test -n "$VERCEL_ORG_ID" || { echo "Missing VERCEL_ORG_ID"; exit 1; }
+          test -n "$VERCEL_PROJECT_ID" || { echo "Missing VERCEL_PROJECT_ID"; exit 1; }
+
+      - name: Pull Vercel project settings
+        run: npx --yes vercel@59.5.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build with Vercel
+        run: npx --yes vercel@59.5.0 build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy to production
+        id: deploy
+        shell: bash
+        run: |
+          DEPLOY_URL="$(npx --yes vercel@59.5.0 deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN")"
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Vercel production deployment"
+            echo "- URL: $DEPLOY_URL"
+            echo "- Commit: $GITHUB_SHA"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Show deployment URL
+        run: echo "Deployed to ${{ steps.deploy.outputs.url }}"

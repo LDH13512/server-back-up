@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /_runtime/
+
+Sitemap: https://backup.example/sitemap.xml

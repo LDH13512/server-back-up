@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>오락실 플래피 버드</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&family=Press+Start+2P&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #0b0f19;
+      color: #f3f4f6;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    .retro-font {
+      font-family: 'Press Start 2P', cursive;
+    }
+    /* Neon Glow Effects */
+    .neon-text-cyan {
+      text-shadow: 0 0 5px rgba(6, 182, 212, 0.8), 0 0 15px rgba(6, 182, 212, 0.5);
+    }
+    .neon-text-pink {
+      text-shadow: 0 0 5px rgba(244, 63, 94, 0.8), 0 0 15px rgba(244, 63, 94, 0.5);
+    }
+    .neon-text-yellow {
+      text-shadow: 0 0 5px rgba(234, 179, 8, 0.8), 0 0 15px rgba(234, 179, 8, 0.5);
+    }
+    .neon-border-cyan {
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.4), inset 0 0 5px rgba(6, 182, 212, 0.2);
+      border: 2px solid rgba(6, 182, 212, 0.6);
+    }
+    .neon-border-pink {
+      box-shadow: 0 0 10px rgba(244, 63, 94, 0.4), inset 0 0 5px rgba(244, 63, 94, 0.2);
+      border: 2px solid rgba(244, 63, 94, 0.6);
+    }
+    /* Scrollbar Style */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(6, 182, 212, 0.5);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(6, 182, 212, 0.8);
+    }
+  </style>
+  <script src="/_runtime/firebase-config?app=minigame"></script>
+  <meta name="author" content="게시판 운영자">
+  <meta name="copyright" content="© 2026 게시판">
+  <meta name="rights" content="AI 도구를 제작 보조로 활용해 운영자가 기획·구현·편집한 자체 콘텐츠">
+</head>
+<body class="flex items-center justify-center min-h-screen overflow-hidden p-2 sm:p-4">
+
+  <div class="relative w-full max-w-md h-[620px] bg-slate-950 rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-800">
+    
+    <canvas id="gameCanvas" width="400" height="540" class="absolute top-0 left-0 w-full h-[540px] block bg-gradient-to-b from-indigo-950 via-slate-900 to-indigo-900"></canvas>
+
+    <div class="absolute top-0 left-0 w-full p-4 flex justify-between items-center z-10 pointer-events-none">
+      <div id="liveScoreContainer" class="flex flex-col items-start hidden">
+        <span class="text-xs text-cyan-400 font-bold uppercase tracking-widest">SCORE</span>
+        <div class="flex items-baseline gap-2">
+          <span id="liveScore" class="text-3xl font-black text-white retro-font neon-text-cyan">0</span>
+          <span id="speedIndicator" class="text-[9px] bg-cyan-950 text-cyan-400 px-1.5 py-0.5 rounded border border-cyan-500/30 font-bold uppercase tracking-wide">LV.1</span>
+        </div>
+      </div>
+      <div id="liveHighScoreContainer" class="flex flex-col items-end hidden">
+        <span class="text-xs text-pink-400 font-bold uppercase tracking-widest">BEST</span>
+        <span id="liveHighScore" class="text-2xl font-black text-white retro-font neon-text-pink">0</span>
+      </div>
+    </div>
+
+    <div id="startScreen" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col justify-between p-6 z-20 text-center transition-opacity duration-300">
+      <div class="my-auto space-y-6">
+        <div class="space-y-2">
+          <span class="text-xs text-cyan-400 font-bold tracking-[0.2em] uppercase">ARCADE MINI GAME</span>
+          <h1 id="game-main-title" class="text-3xl font-extrabold text-white tracking-tight leading-none">
+            플래피 버드 플레이
+          </h1>
+          <p class="text-slate-400 text-sm">스페이스바를 누르거나 화면을 터치하여 비상하세요!</p>
+        </div>
+
+        <div class="flex flex-col gap-3 max-w-xs mx-auto pt-4">
+          <button id="btnPlay" class="w-full py-4 px-6 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-2xl shadow-lg transition-all transform active:scale-[0.95] text-lg flex items-center justify-center gap-3 neon-border-cyan">
+            <i class="fa-solid fa-play text-xl animate-pulse"></i> 게임 시작하기
+          </button>
+          <button id="btnShowLeaderboard" class="w-full py-3 px-6 bg-slate-900/90 hover:bg-slate-800 text-slate-200 hover:text-white font-medium rounded-2xl border border-slate-700 hover:border-slate-500 transition-all text-sm flex items-center justify-center gap-2">
+            <i class="fa-solid fa-trophy text-yellow-500"></i> 명예의 전당 (Top 10)
+          </button>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-500 flex items-center justify-center gap-1.5 bg-slate-900/50 py-2.5 rounded-xl border border-slate-800/60">
+        <i class="fa-solid fa-trophy text-yellow-500"></i>
+        <span>🔥 상시 최고 기록 경쟁 중 (실시간 랭킹 자동 누적)</span>
+      </div>
+    </div>
+
+    <div id="gameOverScreen" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col justify-between p-6 z-20 text-center hidden opacity-0 transition-opacity duration-300">
+      <div class="my-auto space-y-6">
+        <div class="space-y-1">
+          <span class="text-xs text-rose-500 font-bold tracking-[0.2em] uppercase">GAME OVER</span>
+          <h2 class="text-3xl font-extrabold text-white">비행이 끝났습니다!</h2>
+        </div>
+
+        <div class="bg-slate-900/60 rounded-2xl p-4 border border-slate-800 flex justify-around items-center max-w-sm mx-auto">
+          <div class="flex flex-col items-center">
+            <span class="text-xs text-slate-400 mb-1">최종 점수</span>
+            <span id="finalScore" class="text-3xl font-black text-cyan-400 retro-font neon-text-cyan">0</span>
+          </div>
+          <div class="w-[1px] h-10 bg-slate-800"></div>
+          <div class="flex flex-col items-center">
+            <span class="text-xs text-slate-400 mb-1">개인 최고</span>
+            <span id="bestScore" class="text-3xl font-black text-pink-500 retro-font neon-text-pink">0</span>
+          </div>
+        </div>
+
+        <div id="recordForm" class="bg-slate-900/90 rounded-2xl p-5 border border-cyan-500/20 max-w-sm mx-auto space-y-3.5 shadow-xl">
+          <div class="text-left">
+            <label id="submit-label" for="nickname" class="block text-xs font-bold text-cyan-400 mb-1.5 uppercase tracking-wider">명예의 전당 등록 닉네임</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
+                <i class="fa-solid fa-user-astronaut"></i>
+              </span>
+              <input type="text" id="nickname" maxlength="10" placeholder="닉네임을 입력하세요 (최대 10자)" 
+                class="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all text-sm">
+            </div>
+          </div>
+          <button id="btnSubmitScore" class="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold rounded-xl shadow-md transition-all active:scale-[0.98] text-sm flex items-center justify-center gap-2">
+            <i class="fa-solid fa-cloud-arrow-up"></i> 점수 등록하기
+          </button>
+        </div>
+
+        <div class="flex gap-2.5 max-w-sm mx-auto">
+          <button id="btnRestart" class="flex-1 py-3.5 px-4 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition-all active:scale-[0.98] text-sm flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/20">
+            <i class="fa-solid fa-rotate-right"></i> 다시 하기
+          </button>
+          <button id="btnHome" class="py-3.5 px-4 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 font-bold rounded-xl transition-all active:scale-[0.98] text-sm flex items-center justify-center gap-2">
+            <i class="fa-solid fa-house"></i> 메인으로
+          </button>
+        </div>
+      </div>
+      
+      <div class="pt-2">
+        <button id="btnShowLeaderboardGameOver" class="text-xs text-slate-400 hover:text-white transition-colors underline underline-offset-4 decoration-slate-600">
+          실시간 명예의 전당 바로보기 <i class="fa-solid fa-chevron-right ml-0.5 text-[10px]"></i>
+        </button>
+      </div>
+    </div>
+
+    <div id="leaderboardScreen" class="absolute inset-0 bg-slate-950 flex flex-col justify-between p-6 z-20 text-center hidden opacity-0 transition-opacity duration-300">
+      <div class="flex flex-col h-full space-y-4 overflow-hidden">
+        
+        <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+          <div class="text-left">
+            <span class="text-[10px] text-yellow-500 font-extrabold tracking-widest uppercase">HALL OF FAME</span>
+            <h2 id="leaderboard-title" class="text-2xl font-black text-white flex items-center gap-1.5">
+              명예의 전당 <i class="fa-solid fa-crown text-yellow-500 text-lg"></i>
+            </h2>
+          </div>
+          <button id="btnBackToMain" class="w-8 h-8 rounded-full bg-slate-900 border border-slate-800 hover:border-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-all">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="bg-gradient-to-r from-indigo-950/40 to-slate-900/40 border border-indigo-500/10 rounded-2xl p-3.5 text-left text-xs space-y-1">
+          <div class="flex items-center gap-1.5 text-indigo-400 font-bold">
+            <i class="fa-solid fa-circle-info"></i> 명예의 전당 이용 안내
+          </div>
+          <p class="text-slate-400 leading-relaxed">
+            본 리더보드는 초기화 없이 <strong class="text-cyan-400">상시 영구적으로 데이터가 누적</strong>되는 통합 경쟁 랭킹 시스템입니다. 모든 유저들의 위대한 비행 기록을 상시 보존합니다.
+          </p>
+        </div>
+
+        <div class="flex-1 overflow-y-auto pr-1">
+          <table class="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr class="text-slate-500 text-xs border-b border-slate-900 pb-2 uppercase tracking-wider">
+                <th class="py-2 pl-2 w-12">순위</th>
+                <th class="py-2">닉네임</th>
+                <th class="py-2 text-right pr-2">점수</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardList" class="divide-y divide-slate-900">
+              <tr class="text-slate-500 text-center"><td colspan="3" class="py-8"><i class="fa-solid fa-spinner animate-spin text-cyan-400 mr-2"></i>기록 불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pt-2">
+          <button id="btnBackToMainFooter" class="w-full py-3 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-house"></i> 홈화면으로 돌아가기
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="overwriteModal" class="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 z-40 hidden opacity-0 transition-opacity duration-300">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 max-w-sm w-full space-y-4 shadow-2xl text-left transform scale-95 transition-transform duration-300" id="overwriteModalBox">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 flex-shrink-0">
+            <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+          </div>
+          <div>
+            <h3 class="text-md font-bold text-white">동일한 닉네임 감지됨</h3>
+            <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+              이미 명예의 전당에 동일한 닉네임이 존재합니다. 새 점수가 기존 점수보다 높습니다. 점수 업데이트를 어떻게 처리할까요?
+            </p>
+          </div>
+        </div>
+
+        <div class="space-y-2 pt-1 text-xs">
+          <div class="bg-slate-950/80 rounded-xl p-3 border border-slate-800 flex justify-between">
+            <span class="text-slate-500">이전 점수</span>
+            <span id="prevScoreVal" class="font-bold text-slate-400">0점</span>
+          </div>
+          <div class="bg-slate-950/80 rounded-xl p-3 border border-cyan-500/20 flex justify-between">
+            <span class="text-slate-500">신규 점수</span>
+            <span id="newScoreVal" class="font-bold text-cyan-400">0점</span>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2 pt-2">
+          <button id="btnOverwriteAccept" class="w-full py-2.5 px-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold rounded-xl transition-all active:scale-95 text-xs text-center flex items-center justify-center gap-1.5 shadow-md shadow-amber-900/10">
+            <i class="fa-solid fa-pen-to-square"></i> 기존 기록 덮어씌우기 (추천)
+          </button>
+          <button id="btnOverwriteKeepBoth" class="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-xl border border-slate-700 transition-all active:scale-95 text-xs text-center flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-plus"></i> 덮어쓰지 않고 별도로 신규 기록 등록
+          </button>
+          <button id="btnOverwriteCancel" class="w-full py-2 bg-transparent text-slate-500 hover:text-slate-300 font-medium transition-all text-xs text-center">
+            취소
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="absolute bottom-16 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 px-4 py-2.5 rounded-full text-xs text-white shadow-xl flex items-center gap-2 z-50 pointer-events-none transform translate-y-4 opacity-0 transition-all duration-300">
+      <i id="toastIcon" class="fa-solid fa-circle-info text-cyan-400"></i>
+      <span id="toastMessage">메시지 내용</span>
+    </div>
+
+    <div class="w-full h-20 bg-slate-900 border-t border-slate-800 flex justify-between items-center px-6 z-10 select-none">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-gamepad text-slate-500 text-lg"></i>
+        <div class="flex flex-col">
+          <span class="text-[10px] text-slate-500 uppercase tracking-wider font-bold">CONTROLLER</span>
+          <span class="text-xs text-slate-300 font-medium">스페이스바 또는 화면 터치</span>
+        </div>
+      </div>
+      <div id="statusIndicator" class="flex items-center gap-1.5 bg-slate-950/80 px-2.5 py-1.5 rounded-lg border border-slate-800">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500" id="pulseDot"></span>
+        </span>
+        <span class="text-[10px] text-slate-400 font-bold tracking-wider" id="dbStatus">연결 확인 중</span>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+    import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, updateDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+    // ────────────────────────────────────────────────────────
+    // 🛠️ [모듈 구조 내재화 이식] 외부 파일 변동 없는 완벽 독립 처리
+    // ────────────────────────────────────────────────────────
+    const minigameConfig = JSON.parse(atob(_mg_fbc));
+
+    const app = initializeApp(minigameConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // minigames.js 핵심 데이터 풀 및 마스터 팽창 로직 동일 적용
+    const RAW_GAMES = [
+      { 
+        id: 'flappybird', 
+        name: '🐦 플래피 버드 플레이', 
+        label: '새왕'  
+      }
+    ];
+
+    const MASTER_GAMES = RAW_GAMES.map(game => {
+      const href = game.href || `/minigame/${game.id}/index.html`;
+      let rawRanks = game.ranks;
+      if (!rawRanks && game.label) {
+        rawRanks = [{ key: game.id, label: game.label }];
+      } else if (!rawRanks) {
+        rawRanks = [{ key: game.id, label: '최강자' }];
+      }
+      const normalizedRanks = rawRanks.map(r => ({
+        key: r.key,
+        label: r.label,
+        path: r.path || ['artifacts', game.id, 'public', 'data', 'leaderboard']
+      }));
+      return { ...game, href, ranks: normalizedRanks };
+    });
+
+    // 팽창 결과를 통한 동적 경로 추출
+    const gameMeta = MASTER_GAMES.find(g => g.id === 'flappybird');
+    const rankMeta = gameMeta.ranks[0];
+    const rankPath = rankMeta.path; // ['artifacts', 'flappybird', 'public', 'data', 'leaderboard']
+    // ────────────────────────────────────────────────────────
+    
+    // Auth State Tracker
+    let currentUser = null;
+
+    // Connect Indicator
+    const dbStatus = document.getElementById('dbStatus');
+    const pulseDot = document.getElementById('pulseDot');
+
+    // Auth Initialization (Rule 3 Flow)
+    async function initAuth() {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (err) {
+        console.error("Authentication Error: ", err);
+        showToast("데이터베이스 연결에 실패했습니다. (인증오류)", "error");
+      }
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        dbStatus.textContent = "DB 연결됨";
+        dbStatus.classList.replace('text-slate-400', 'text-emerald-400');
+        pulseDot.classList.replace('bg-rose-500', 'bg-emerald-400');
+        pulseDot.previousElementSibling.classList.replace('bg-rose-400', 'bg-emerald-300');
+        // Initial silent leaderboard check
+        cleanupAndFetchLeaderboard(false);
+      } else {
+        dbStatus.textContent = "로그인 해제";
+        dbStatus.classList.replace('text-emerald-400', 'text-slate-400');
+        pulseDot.classList.replace('bg-emerald-400', 'bg-rose-500');
+      }
+    });
+
+    initAuth();
+
+    // --------------------------------------------------
+    // 3. FLAPPY BIRD GAME ENGINE (HTML5 CANVAS)
+    // --------------------------------------------------
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // UI Overlays
+    const startScreen = document.getElementById('startScreen');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const leaderboardScreen = document.getElementById('leaderboardScreen');
+    const overwriteModal = document.getElementById('overwriteModal');
+    const overwriteModalBox = document.getElementById('overwriteModalBox');
+    const liveScoreContainer = document.getElementById('liveScoreContainer');
+    const liveHighScoreContainer = document.getElementById('liveHighScoreContainer');
+
+    // Buttons
+    const btnPlay = document.getElementById('btnPlay');
+    const btnRestart = document.getElementById('btnRestart');
+    const btnHome = document.getElementById('btnHome');
+    const btnShowLeaderboard = document.getElementById('btnShowLeaderboard');
+    const btnShowLeaderboardGameOver = document.getElementById('btnShowLeaderboardGameOver');
+    const btnBackToMain = document.getElementById('btnBackToMain');
+    const btnBackToMainFooter = document.getElementById('btnBackToMainFooter');
+    const btnSubmitScore = document.getElementById('btnSubmitScore');
+
+    // Labels & Indicators
+    const liveScore = document.getElementById('liveScore');
+    const liveHighScore = document.getElementById('liveHighScore');
+    const speedIndicator = document.getElementById('speedIndicator');
+    const finalScore = document.getElementById('finalScore');
+    const bestScore = document.getElementById('bestScore');
+    const inputNickname = document.getElementById('nickname');
+    const leaderboardList = document.getElementById('leaderboardList');
+
+    // ==================================================
+    // ⏰ DELTA TIME (주사율 독립 물리 보정 엔진)
+    // ==================================================
+    let lastTime = performance.now();
+    const targetFps = 60;
+    const targetFrameTime = 1000 / targetFps; 
+    let dtScale = 1.0; 
+
+    // Game State Variables
+    let gameState = "START"; // START, COUNTDOWN, PLAYING, GAMEOVER
+    let score = 0;
+    let localBest = localStorage.getItem('flappy_local_best') || 0;
+    liveHighScore.textContent = localBest;
+    let countdownVal = 3;
+
+    // Soft Physics Balance Configuration
+    let bird = {
+      x: 85,
+      y: 250,
+      radius: 14,
+      velocity: 0,
+      gravity: 0.24, 
+      jump: -5.0,    
+      rotation: 0,
+      wingFlap: 0
+    };
+
+    // Progressive Speed variables
+    let pipes = [];
+    const pipeWidth = 58;
+    const pipeGap = 135;
+    
+    // Dynamic difficulty settings
+    let currentLevel = 1;
+    let levelUpTimer = 0; 
+    let framesSinceLastSpawn = 0;
+    let frameCount = 0; 
+
+    // Aesthetic Parallax Backgrounds
+    let bgStars = [];
+    let clouds = [];
+    for (let i = 0; i < 20; i++) {
+      bgStars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * (canvas.height - 100),
+        size: Math.random() * 1.5 + 0.5,
+        alpha: Math.random() * 0.5 + 0.3,
+        speed: Math.random() * 0.05 + 0.02
+      });
+    }
+    for (let i = 0; i < 4; i++) {
+      clouds.push({
+        x: i * (canvas.width / 3) + Math.random() * 50,
+        y: 40 + Math.random() * 80,
+        width: 80 + Math.random() * 60,
+        height: 25 + Math.random() * 15,
+        speed: Math.random() * 0.15 + 0.1
+      });
+    }
+
+    // Particle effect
+    let particles = [];
+    function spawnJumpParticles(x, y) {
+      for (let i = 0; i < 6; i++) {
+        particles.push({
+          x: x - 5,
+          y: y + 2,
+          vx: -Math.random() * 1.5 - 0.5,
+          vy: Math.random() * 2 - 1,
+          size: Math.random() * 3 + 1,
+          color: 'rgba(6, 182, 212, 0.6)',
+          life: 1
+        });
+      }
+    }
+
+    function updateParticles() {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * dtScale;
+        p.y += p.vy * dtScale;
+        p.life -= 0.03 * dtScale;
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+        }
+      }
+    }
+
+    function drawParticles() {
+      particles.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1.0;
+    }
+
+    // Drawing Helpers
+    function drawStars() {
+      bgStars.forEach(s => {
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = s.alpha;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.fill();
+        s.x -= s.speed * dtScale;
+        if (s.x < 0) s.x = canvas.width;
+      });
+      ctx.globalAlpha = 1.0;
+    }
+
+    function drawClouds() {
+      clouds.forEach(c => {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+        ctx.beginPath();
+        ctx.roundRect(c.x, c.y, c.width, c.height, 12);
+        ctx.fill();
+        c.x -= c.speed * dtScale;
+        if (c.x + c.width < 0) {
+          c.x = canvas.width + 20;
+          c.y = 40 + Math.random() * 80;
+        }
+      });
+    }
+
+    function drawGround() {
+      const groundY = canvas.height - 40;
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, groundY, canvas.width, 40);
+
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, groundY);
+      ctx.lineTo(canvas.width, groundY);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(244, 63, 94, 0.15)';
+      ctx.lineWidth = 1;
+      const scrollOffset = (frameCount * 1.5) % 20;
+      for (let x = scrollOffset; x < canvas.width; x += 20) {
+        ctx.beginPath();
+        ctx.moveTo(x, groundY);
+        ctx.lineTo(x - 10, canvas.height);
+        ctx.stroke();
+      }
+    }
+
+    function drawBird() {
+      ctx.save();
+      ctx.translate(bird.x, bird.y);
+      ctx.rotate(bird.rotation);
+
+      bird.wingFlap = Math.sin(frameCount * 0.15) * 4;
+
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#06b6d4';
+
+      ctx.fillStyle = '#06b6d4';
+      ctx.beginPath();
+      ctx.arc(0, 0, bird.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(5, -4, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#090d16';
+      ctx.beginPath();
+      ctx.arc(6, -4, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#f43f5e';
+      ctx.beginPath();
+      ctx.moveTo(11, -1);
+      ctx.lineTo(19, 2);
+      ctx.lineTo(11, 5);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#22d3ee';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(-6, bird.wingFlap, 7, 5, -Math.PI/6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function spawnPipe() {
+      const minHeight = 60;
+      const maxHeight = (canvas.height - 180) - minHeight;
+      const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1) + minHeight);
+      const bottomHeight = canvas.height - 40 - topHeight - pipeGap;
+
+      pipes.push({
+        x: canvas.width,
+        topHeight: topHeight,
+        bottomHeight: bottomHeight,
+        passed: false
+      });
+    }
+
+    function drawPipes() {
+      pipes.forEach(pipe => {
+        const groundY = canvas.height - 40;
+
+        let gradTop = ctx.createLinearGradient(pipe.x, 0, pipe.x + pipeWidth, 0);
+        gradTop.addColorStop(0, '#10b981');
+        gradTop.addColorStop(0.3, '#34d399');
+        gradTop.addColorStop(1, '#047857');
+
+        ctx.fillStyle = gradTop;
+        ctx.beginPath();
+        ctx.roundRect(pipe.x, 0, pipeWidth, pipe.topHeight, [0, 0, 8, 8]);
+        ctx.fill();
+
+        ctx.fillStyle = '#34d399';
+        ctx.fillRect(pipe.x - 3, pipe.topHeight - 14, pipeWidth + 6, 14);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(pipe.x - 3, pipe.topHeight - 14, pipeWidth + 6, 14);
+
+        let gradBot = ctx.createLinearGradient(pipe.x, groundY - pipe.bottomHeight, pipe.x + pipeWidth, groundY);
+        gradBot.addColorStop(0, '#10b981');
+        gradBot.addColorStop(0.3, '#34d399');
+        gradBot.addColorStop(1, '#047857');
+
+        ctx.fillStyle = gradBot;
+        ctx.beginPath();
+        ctx.roundRect(pipe.x, groundY - pipe.bottomHeight, pipeWidth, pipe.bottomHeight, [8, 8, 0, 0]);
+        ctx.fill();
+
+        ctx.fillStyle = '#34d399';
+        ctx.fillRect(pipe.x - 3, groundY - pipe.bottomHeight, pipeWidth + 6, 14);
+        ctx.strokeRect(pipe.x - 3, groundY - pipe.bottomHeight, pipeWidth + 6, 14);
+      });
+    }
+
+    function resetGame() {
+      score = 0;
+      liveScore.textContent = score;
+      pipes = [];
+      particles = [];
+      bird.y = 250;
+      bird.velocity = 0;
+      bird.rotation = 0;
+      frameCount = 0;
+      framesSinceLastSpawn = 0;
+      currentLevel = 1;
+      levelUpTimer = 0;
+      updateLevelUI();
+    }
+
+    function checkCollisions() {
+      const groundY = canvas.height - 40;
+
+      if (bird.y + bird.radius >= groundY) {
+        bird.y = groundY - bird.radius;
+        return true;
+      }
+      if (bird.y - bird.radius <= 0) {
+        bird.y = bird.radius;
+        return true;
+      }
+
+      for (let i = 0; i < pipes.length; i++) {
+        const pipe = pipes[i];
+        if (bird.x + bird.radius - 2 > pipe.x && bird.x - bird.radius + 2 < pipe.x + pipeWidth) {
+          if (bird.y - bird.radius + 2 < pipe.topHeight) {
+            return true;
+          }
+          if (bird.y + bird.radius - 2 > groundY - pipe.bottomHeight) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    let floatingScores = [];
+    function spawnScorePop(x, y) {
+      floatingScores.push({
+        x: x,
+        y: y,
+        vy: -1,
+        life: 1.0,
+        val: "+1"
+      });
+    }
+
+    function updateFloatingScores() {
+      for (let i = floatingScores.length - 1; i >= 0; i--) {
+        const s = floatingScores[i];
+        s.y += s.vy * dtScale;
+        s.life -= 0.02 * dtScale;
+        if (s.life <= 0) {
+          floatingScores.splice(i, 1);
+        }
+      }
+    }
+
+    function drawFloatingScores() {
+      floatingScores.forEach(s => {
+        ctx.fillStyle = '#eab308';
+        ctx.globalAlpha = Math.max(0, s.life);
+        ctx.font = 'bold 20px "Noto Sans KR", sans-serif';
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = '#eab308';
+        ctx.fillText(s.val, s.x, s.y);
+        ctx.shadowBlur = 0;
+      });
+      ctx.globalAlpha = 1.0;
+    }
+
+    function jump() {
+      if (gameState !== "PLAYING") return;
+      bird.velocity = bird.jump; 
+      spawnJumpParticles(bird.x, bird.y);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (gameState === "PLAYING") {
+          jump();
+        } else if (gameState === "START") {
+          startCountdown();
+        }
+      }
+    });
+
+    function handleScreenInteraction(e) {
+      if (
+        e.target.tagName === 'BUTTON' || 
+        e.target.closest('button') || 
+        e.target.tagName === 'INPUT' ||
+        e.target.closest('#overwriteModalBox')
+      ) {
+        return;
+      }
+
+      if (gameState === "PLAYING") {
+        if (e.cancelable) e.preventDefault();
+        jump();
+      } else if (gameState === "START") {
+        if (e.cancelable) e.preventDefault();
+        startCountdown();
+      }
+    }
+
+    const mainContainer = document.querySelector('.relative.w-full.max-w-md');
+    mainContainer.addEventListener('touchstart', handleScreenInteraction, { passive: false });
+    mainContainer.addEventListener('mousedown', handleScreenInteraction);
+
+    // --------------------------------------------------
+    // 4. SCREEN FLOW MANAGEMENTS
+    // --------------------------------------------------
+    let countdownIntervalId = null;
+
+    function startCountdown() {
+      resetGame();
+      gameState = "COUNTDOWN";
+      countdownVal = 3;
+
+      startScreen.classList.add('opacity-0', 'pointer-events-none');
+      setTimeout(() => startScreen.classList.add('hidden'), 300);
+      gameOverScreen.classList.add('hidden');
+      
+      liveScoreContainer.classList.remove('hidden');
+      liveHighScoreContainer.classList.remove('hidden');
+
+      if (countdownIntervalId) clearInterval(countdownIntervalId);
+
+      lastTime = performance.now(); 
+
+      countdownIntervalId = setInterval(() => {
+        countdownVal--;
+        if (countdownVal <= 0) {
+          clearInterval(countdownIntervalId);
+          gameState = "PLAYING";
+          lastTime = performance.now(); 
+        }
+      }, 1000);
+    }
+
+    function triggerGameOver() {
+      gameState = "GAMEOVER";
+      
+      if (score > localBest) {
+        localBest = score;
+        localStorage.setItem('flappy_local_best', localBest);
+        liveHighScore.textContent = localBest;
+      }
+
+      finalScore.textContent = score;
+      bestScore.textContent = localBest;
+
+      gameOverScreen.classList.remove('hidden');
+      setTimeout(() => {
+        gameOverScreen.classList.remove('opacity-0', 'pointer-events-none');
+      }, 50);
+
+      liveScoreContainer.classList.add('hidden');
+      liveHighScoreContainer.classList.add('hidden');
+    }
+
+    function drawCountdownText() {
+      if (gameState !== "COUNTDOWN") return;
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#ffffff';
+      
+      ctx.shadowBlur = 25;
+      ctx.shadowColor = '#f43f5e';
+      
+      ctx.font = '900 80px "Noto Sans KR", sans-serif';
+      ctx.fillText(countdownVal, canvas.width / 2, canvas.height / 2 - 30);
+      
+      ctx.shadowBlur = 0;
+      ctx.font = 'bold 15px "Noto Sans KR", sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.fillText("준비하세요!", canvas.width / 2, canvas.height / 2 + 45);
+      ctx.restore();
+    }
+
+    // --------------------------------------------------
+    // DYNAMIC DIFFICULTY CALCULATOR
+    // --------------------------------------------------
+    function getDynamicPipeSpeed() {
+      return 2.2 + Math.min(1.8, score * 0.08);
+    }
+
+    function updateLevelUI() {
+      const nextLevel = Math.floor(score / 5) + 1;
+      if (nextLevel > currentLevel) {
+        currentLevel = nextLevel;
+        levelUpTimer = 75; 
+      }
+
+      if (speedIndicator) {
+        speedIndicator.textContent = currentLevel >= 5 ? 'LV.MAX' : `LV.${currentLevel}`;
+        if (currentLevel >= 5) {
+          speedIndicator.className = "text-[9px] bg-rose-950 text-rose-400 px-1.5 py-0.5 rounded border border-rose-500/30 font-bold uppercase tracking-wide animate-pulse";
+        } else {
+          speedIndicator.className = "text-[9px] bg-cyan-950 text-cyan-400 px-1.5 py-0.5 rounded border border-cyan-500/30 font-bold uppercase tracking-wide";
+        }
+      }
+    }
+
+    function drawSpeedUpNotification() {
+      if (levelUpTimer <= 0) return;
+      levelUpTimer -= dtScale; 
+
+      if (Math.floor(levelUpTimer) % 12 < 8) {
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#f43f5e';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#f43f5e';
+        ctx.font = '900 24px "Noto Sans KR", sans-serif';
+        ctx.fillText("⚡ SPEED UP! ⚡", canvas.width / 2, 110);
+        ctx.restore();
+      }
+    }
+
+    // --------------------------------------------------
+    // 5. GAME LOOP ENGINE
+    // --------------------------------------------------
+    function loop(timestamp) {
+      if (!timestamp) timestamp = performance.now();
+      let dt = timestamp - lastTime;
+      lastTime = timestamp;
+
+      if (dt > 100) dt = 100; 
+
+      dtScale = dt / targetFrameTime;
+      frameCount += dtScale; 
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      drawStars();
+      drawClouds();
+
+      if (gameState === "PLAYING") {
+        bird.velocity += bird.gravity * dtScale;
+        bird.y += bird.velocity * dtScale;
+        
+        bird.rotation = Math.min(Math.PI / 3, Math.max(-Math.PI / 8, bird.velocity * 0.08));
+
+        const activePipeSpeed = getDynamicPipeSpeed();
+        const targetSpacingInterval = Math.round(210 / activePipeSpeed);
+
+        framesSinceLastSpawn += dtScale;
+        if (framesSinceLastSpawn >= targetSpacingInterval) {
+          spawnPipe();
+          framesSinceLastSpawn -= targetSpacingInterval; 
+        }
+
+        for (let i = pipes.length - 1; i >= 0; i--) {
+          const pipe = pipes[i];
+          pipe.x -= activePipeSpeed * dtScale; 
+
+          if (!pipe.passed && pipe.x + pipeWidth < bird.x) {
+            pipe.passed = true;
+            score++;
+            liveScore.textContent = score;
+            updateLevelUI(); 
+            spawnScorePop(bird.x + 20, bird.y - 20);
+          }
+
+          if (pipe.x + pipeWidth < 0) {
+            pipes.splice(i, 1);
+          }
+        }
+
+        if (checkCollisions()) {
+          triggerGameOver();
+        }
+      } else if (gameState === "COUNTDOWN") {
+        bird.y = 250 + Math.sin(frameCount * 0.12) * 8;
+        bird.rotation = Math.sin(frameCount * 0.05) * 0.04;
+      } else if (gameState === "START" || gameState === "GAMEOVER") {
+        bird.y = (canvas.height - 40) / 2 + Math.sin(frameCount * 0.05) * 15;
+        bird.rotation = Math.sin(frameCount * 0.03) * 0.1;
+      }
+
+      drawPipes();
+      drawGround();
+      updateParticles();
+      drawParticles();
+      updateFloatingScores();
+      drawFloatingScores();
+      drawBird();
+      
+      drawCountdownText(); 
+      drawSpeedUpNotification();
+
+      requestAnimationFrame(loop);
+    }
+
+    lastTime = performance.now();
+    requestAnimationFrame(loop);
+
+    // --------------------------------------------------
+    // 6. FIRESTORE DATABASE & LEADERBOARD CONTROLLER
+    // --------------------------------------------------
+    async function cleanupAndFetchLeaderboard(showUI = true) {
+      if (!currentUser) return;
+
+      if (showUI) {
+        leaderboardList.innerHTML = `<tr class="text-slate-500 text-center"><td colspan="3" class="py-12"><i class="fa-solid fa-spinner animate-spin text-cyan-400 mr-2 text-lg"></i>데이터 갱신 중...</td></tr>`;
+      }
+
+      try {
+        const colRef = collection(db, ...rankPath);
+        const querySnapshot = await getDocs(colRef);
+
+        let activeRecords = [];
+
+        for (const docSnap of querySnapshot.docs) {
+          const data = docSnap.data();
+          if (data.nickname && typeof data.score === 'number') {
+            activeRecords.push({
+              id: docSnap.id,
+              nickname: data.nickname,
+              score: data.score,
+              timestamp: data.timestamp
+            });
+          }
+        }
+
+        activeRecords.sort((a, b) => {
+          if (b.score !== a.score) {
+            return b.score - a.score;
+          }
+          return a.timestamp - b.timestamp;
+        });
+
+        const top10 = activeRecords.slice(0, 10);
+
+        if (showUI) {
+          renderLeaderboardUI(top10);
+        }
+
+        return activeRecords;
+      } catch (err) {
+        console.error("Leaderboard loading error: ", err);
+        if (showUI) {
+          leaderboardList.innerHTML = `<tr class="text-rose-500 text-center text-xs"><td colspan="3" class="py-8"><i class="fa-solid fa-triangle-exclamation mr-2"></i>조회 오류가 발생했습니다.<br>${err.message}</td></tr>`;
+        }
+      }
+    }
+
+    function renderLeaderboardUI(records) {
+      if (records.length === 0) {
+        leaderboardList.innerHTML = `
+          <tr>
+            <td colspan="3" class="py-12 text-center text-slate-500 text-xs">
+              <i class="fa-solid fa-medal text-slate-600 text-2xl mb-2 block"></i>
+              등록된 기록이 아직 없습니다.<br>첫 명예의 전당 주인공이 되어보세요! 🏆
+            </td>
+          </tr>`;
+        return;
+      }
+
+      let html = '';
+      records.forEach((record, index) => {
+        let medal = '';
+        let rowClass = 'hover:bg-slate-900/30 transition-colors duration-150';
+        let textStyle = 'text-slate-300';
+
+        if (index === 0) {
+          medal = '<span class="text-yellow-500 text-md"><i class="fa-solid fa-crown"></i></span>';
+          rowClass = 'bg-yellow-500/5 hover:bg-yellow-500/10 border-l-2 border-yellow-500 transition-colors';
+          textStyle = 'text-yellow-400 font-extrabold';
+        } else if (index === 1) {
+          medal = '<span class="text-slate-300 text-sm"><i class="fa-solid fa-medal"></i></span>';
+          textStyle = 'text-slate-100 font-bold';
+        } else if (index === 2) {
+          medal = '<span class="text-amber-600 text-sm"><i class="fa-solid fa-medal"></i></span>';
+          textStyle = 'text-amber-200 font-semibold';
+        } else {
+          medal = `<span class="text-xs font-mono text-slate-500">${index + 1}</span>`;
+        }
+
+        html += `
+          <tr class="${rowClass}">
+            <td class="py-3 pl-3.5 align-middle">${medal}</td>
+            <td class="py-3 font-semibold ${textStyle} truncate max-w-[150px] align-middle">${escapeHtml(record.nickname)}</td>
+            <td class="py-3 text-right pr-4 font-mono font-bold text-cyan-400 align-middle text-sm">${record.score}점</td>
+          </tr>
+        `;
+      });
+      leaderboardList.innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    // --------------------------------------------------
+    // 7. RECORD SUBMIT & OVERWRITE HANDLING
+    // --------------------------------------------------
+    let pendingSubmitData = null;
+
+    async function handleScoreSubmission() {
+      const nicknameInput = inputNickname.value.trim();
+      if (!nicknameInput) {
+        showToast("닉네임을 정확히 입력해주세요!", "warning");
+        return;
+      }
+      if (score === 0) {
+        showToast("0점은 명예의 전당에 등록할 수 없습니다.", "warning");
+        return;
+      }
+      if (!currentUser) {
+        showToast("인증 세션이 없습니다. 잠시 후 다시 시도하세요.", "error");
+        return;
+      }
+
+      btnSubmitScore.disabled = true;
+      btnSubmitScore.innerHTML = `<i class="fa-solid fa-spinner animate-spin mr-2"></i>확인 중...`;
+
+      try {
+        const activeRecords = await cleanupAndFetchLeaderboard(false);
+        const duplicate = activeRecords.find(r => r.nickname === nicknameInput);
+
+        if (duplicate) {
+          if (score > duplicate.score) {
+            pendingSubmitData = {
+              id: duplicate.id,
+              nickname: nicknameInput,
+              score: score,
+              isOverwrite: true
+            };
+            document.getElementById('prevScoreVal').textContent = `${duplicate.score}점`;
+            document.getElementById('newScoreVal').textContent = `${score}점`;
+            showOverwriteModal(true);
+            return;
+          } else {
+            await addNewRecord(nicknameInput, score);
+          }
+        } else {
+          await addNewRecord(nicknameInput, score);
+        }
+      } catch (err) {
+        console.error("Submission check error: ", err);
+        showToast("데이터 전송 검사 중 오류가 발생했습니다.", "error");
+      } finally {
+        resetSubmitButton();
+      }
+    }
+
+    function resetSubmitButton() {
+      btnSubmitScore.disabled = false;
+      btnSubmitScore.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> 점수 등록하기`;
+    }
+
+    async function addNewRecord(nickname, scoreValue) {
+      try {
+        const colRef = collection(db, ...rankPath);
+        await addDoc(colRef, {
+          nickname: nickname,
+          score: scoreValue,
+          timestamp: Date.now()
+        });
+        showToast("명예의 전당에 성공적으로 등록되었습니다!", "success");
+        cleanupAndFetchLeaderboard(true);
+        switchScreen('LEADERBOARD');
+      } catch (err) {
+        console.error("Adding record error: ", err);
+        showToast("점수 등록에 실패했습니다. (DB오류)", "error");
+      }
+    }
+
+    async function overwriteExistingRecord(docId, nickname, scoreValue) {
+      try {
+        const docRef = doc(db, ...rankPath, docId);
+        await updateDoc(docRef, {
+          score: scoreValue,
+          timestamp: Date.now()
+        });
+        showToast("기존 최고 기록이 성공적으로 업데이트되었습니다!", "success");
+        cleanupAndFetchLeaderboard(true);
+        switchScreen('LEADERBOARD');
+      } catch (err) {
+        console.error("Overwriting record error: ", err);
+        showToast("기존 기록 업데이트에 실패했습니다. (DB오류)", "error");
+      }
+    }
+
+    function showOverwriteModal(show) {
+      if (show) {
+        overwriteModal.classList.remove('hidden');
+        setTimeout(() => {
+          overwriteModal.classList.remove('opacity-0');
+          overwriteModalBox.classList.replace('scale-95', 'scale-100');
+        }, 50);
+      } else {
+        overwriteModalBox.classList.replace('scale-100', 'scale-95');
+        overwriteModal.classList.add('opacity-0');
+        setTimeout(() => {
+          overwriteModal.classList.add('hidden');
+          resetSubmitButton();
+        }, 300);
+      }
+    }
+
+    document.getElementById('btnOverwriteAccept').addEventListener('click', async () => {
+      if (pendingSubmitData) {
+        showOverwriteModal(false);
+        await overwriteExistingRecord(pendingSubmitData.id, pendingSubmitData.nickname, pendingSubmitData.score);
+        pendingSubmitData = null;
+      }
+    });
+
+    document.getElementById('btnOverwriteKeepBoth').addEventListener('click', async () => {
+      if (pendingSubmitData) {
+        showOverwriteModal(false);
+        await addNewRecord(pendingSubmitData.nickname, pendingSubmitData.score);
+        pendingSubmitData = null;
+      }
+    });
+
+    document.getElementById('btnOverwriteCancel').addEventListener('click', () => {
+      showOverwriteModal(false);
+      pendingSubmitData = null;
+    });
+
+    btnSubmitScore.addEventListener('click', handleScoreSubmission);
+
+    // --------------------------------------------------
+    // 8. SCREEN SWITCHER (NAVIGATION)
+    // --------------------------------------------------
+    function switchScreen(screenName) {
+      const screens = [startScreen, gameOverScreen, leaderboardScreen];
+      screens.forEach(s => {
+        s.classList.add('opacity-0');
+        s.classList.add('pointer-events-none');
+      });
+
+      setTimeout(() => {
+        screens.forEach(s => s.classList.add('hidden'));
+
+        if (screenName === 'START') {
+          gameState = "START";
+          startScreen.classList.remove('hidden');
+          setTimeout(() => {
+            startScreen.classList.remove('opacity-0', 'pointer-events-none');
+          }, 50);
+        } else if (screenName === 'GAMEOVER') {
+          gameState = "GAMEOVER";
+          gameOverScreen.classList.remove('hidden');
+          setTimeout(() => {
+            gameOverScreen.classList.remove('opacity-0', 'pointer-events-none');
+          }, 50);
+        } else if (screenName === 'LEADERBOARD') {
+          leaderboardScreen.classList.remove('hidden');
+          setTimeout(() => {
+            leaderboardScreen.classList.remove('opacity-0', 'pointer-events-none');
+          }, 50);
+        }
+      }, 250);
+    }
+
+    btnPlay.addEventListener('click', startCountdown);
+    btnRestart.addEventListener('click', startCountdown);
+    btnHome.addEventListener('click', () => {
+      switchScreen('START');
+    });
+    btnShowLeaderboard.addEventListener('click', () => {
+      cleanupAndFetchLeaderboard(true);
+      switchScreen('LEADERBOARD');
+    });
+    btnShowLeaderboardGameOver.addEventListener('click', () => {
+      cleanupAndFetchLeaderboard(true);
+      switchScreen('LEADERBOARD');
+    });
+    btnBackToMain.addEventListener('click', () => switchScreen('START'));
+    btnBackToMainFooter.addEventListener('click', () => switchScreen('START'));
+
+    // --------------------------------------------------
+    // 9. REUSABLE TOAST COMPONENT
+    // --------------------------------------------------
+    let toastTimeout = null;
+    function showToast(message, type = "info") {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMessage');
+      const toastIcon = document.getElementById('toastIcon');
+
+      toastMsg.textContent = message;
+      
+      if (type === "success") {
+        toastIcon.className = "fa-solid fa-circle-check text-emerald-400";
+        toast.className = "absolute bottom-24 left-1/2 -translate-x-1/2 bg-slate-900 border border-emerald-500/30 px-5 py-3 rounded-full text-xs text-white shadow-2xl flex items-center gap-2 z-50 pointer-events-none transform translate-y-0 opacity-100 transition-all duration-300";
+      } else if (type === "warning") {
+        toastIcon.className = "fa-solid fa-triangle-exclamation text-amber-400";
+        toast.className = "absolute bottom-24 left-1/2 -translate-x-1/2 bg-slate-900 border border-amber-500/30 px-5 py-3 rounded-full text-xs text-white shadow-2xl flex items-center gap-2 z-50 pointer-events-none transform translate-y-0 opacity-100 transition-all duration-300";
+      } else if (type === "error") {
+        toastIcon.className = "fa-solid fa-circle-xmark text-rose-500";
+        toast.className = "absolute bottom-24 left-1/2 -translate-x-1/2 bg-slate-900 border border-rose-500/30 px-5 py-3 rounded-full text-xs text-white shadow-2xl flex items-center gap-2 z-50 pointer-events-none transform translate-y-0 opacity-100 transition-all duration-300";
+      } else {
+        toastIcon.className = "fa-solid fa-circle-info text-cyan-400";
+        toast.className = "absolute bottom-24 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 px-5 py-3 rounded-full text-xs text-white shadow-2xl flex items-center gap-2 z-50 pointer-events-none transform translate-y-0 opacity-100 transition-all duration-300";
+      }
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.replace('translate-y-0', 'translate-y-4');
+        toast.classList.replace('opacity-100', 'opacity-0');
+      }, 3000);
+    }
+
+    // 🌟 실시간 라벨 및 데이터 구조 UI 동적 치환 가동
+    window.addEventListener('load', () => {
+      if (gameMeta && rankMeta) {
+        document.getElementById('game-main-title').innerHTML = `FLAPPY <span class="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-rose-400 neon-text-pink">${rankMeta.label}</span>`;
+        document.getElementById('leaderboard-title').innerHTML = `${rankMeta.label} 명예의 전당 <i class="fa-solid fa-crown text-yellow-500 text-lg"></i>`;
+        document.getElementById('submit-label').textContent = `${rankMeta.label} 등록 닉네임`;
+      }
+    });
+  </script>
+  <script defer src="/minigame/copyright-notice.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/game-images",
+      "destination": "/api/ai/generate?route=game-images"
+    },
+    {
+      "source": "/_runtime/firebase-config",
+      "destination": "/api/firebase/bootstrap"
+    }
+  ]
+}

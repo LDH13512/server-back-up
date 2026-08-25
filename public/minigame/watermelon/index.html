@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>오락실 수박게임</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Gamja+Flower&family=Noto+Sans+KR:wght@400;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: radial-gradient(circle, #fbcfe8 0%, #f1f5f9 100%);
+        }
+        .game-font {
+            font-family: 'Gamja Flower', cursive;
+        }
+        /* Custom scrollbar for ranking board */
+        .ranking-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .ranking-scroll::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.03);
+            border-radius: 99px;
+        }
+        .ranking-scroll::-webkit-scrollbar-thumb {
+            background: rgba(244, 63, 94, 0.3);
+            border-radius: 99px;
+        }
+        .ranking-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(244, 63, 94, 0.6);
+        }
+    </style>
+  <script src="/_runtime/firebase-config?app=minigame"></script>
+  <meta name="author" content="게시판 운영자">
+  <meta name="copyright" content="© 2026 게시판">
+  <meta name="rights" content="AI 도구를 제작 보조로 활용해 운영자가 기획·구현·편집한 자체 콘텐츠">
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between p-2 md:p-6 overflow-x-hidden">
+
+    <header class="w-full max-w-xl flex items-center justify-between px-4 py-3 bg-slate-900/90 text-white backdrop-blur-md rounded-2xl shadow-xl border border-slate-700">
+        <div class="flex items-center gap-2">
+            <span class="text-3xl animate-bounce">🕹️</span>
+            <div>
+                <h1 id="game-title-header" class="text-xl md:text-2xl font-black text-pink-400 game-font leading-none">오락실 수박게임</h1>
+                <p class="text-[10px] text-slate-300 mt-1">과일을 합치고 명예의 전당에 도전하세요!</p>
+            </div>
+        </div>
+        <div class="flex gap-2 text-center">
+            <div class="bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
+                <p class="text-[9px] text-amber-400 font-bold uppercase tracking-wider">현재 점수</p>
+                <p id="current-score" class="text-base md:text-lg font-black text-white">0</p>
+            </div>
+            <div class="bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
+                <p class="text-[9px] text-pink-400 font-bold uppercase tracking-wider">최고 점수</p>
+                <p id="best-score" class="text-base md:text-lg font-black text-white">0</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="w-full max-w-5xl flex flex-col lg:flex-row items-center justify-center gap-4 my-2 flex-grow">
+        
+        <div class="hidden lg:flex flex-col gap-4 w-64 flex-shrink-0">
+            <div class="bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-md border border-slate-100 flex flex-col items-center">
+                <h3 class="text-sm font-bold text-gray-500 mb-2">대기 중인 과일</h3>
+                <div class="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center border border-dashed border-slate-200 relative">
+                    <div id="next-fruit-preview" class="text-5xl transition-all duration-300">🍒</div>
+                </div>
+                <p id="next-fruit-name" class="text-sm font-bold text-gray-700 mt-2">체리</p>
+            </div>
+
+            <div class="bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-md border border-slate-100 flex justify-between items-center">
+                <span class="text-sm font-bold text-gray-600">효과음 설정</span>
+                <button id="btn-sound" class="px-3 py-1.5 bg-pink-500 text-white hover:bg-pink-600 rounded-lg text-xs font-bold transition-all shadow-sm shadow-pink-500/20">
+                    소리 켜짐 🔊
+                </button>
+            </div>
+        </div>
+
+        <div class="relative bg-slate-900/10 p-2 rounded-3xl shadow-2xl border border-white/60 backdrop-blur-md">
+            <div id="danger-alert" class="absolute top-[170px] left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none hidden transition-opacity duration-300 bg-red-500/95 text-white font-bold px-4 py-2 rounded-full text-xs shadow-md flex items-center gap-1 z-10 animate-pulse">
+                <span>⚠️</span> <span>박스가 가득 차오르고 있어요!</span>
+            </div>
+
+            <div id="gameover-screen" class="absolute inset-0 bg-slate-950/85 backdrop-blur-md rounded-3xl flex flex-col items-center justify-center z-20 opacity-0 pointer-events-none transition-all duration-500">
+                <div class="text-center p-6 max-w-[320px] scale-90 transition-transform duration-500" id="gameover-box">
+                    <span class="text-6xl block mb-2">🎮</span>
+                    <h2 class="text-3xl font-black text-pink-400 game-font mb-1">GAME OVER</h2>
+                    <p class="text-slate-300 text-xs mb-3">박스 위에 과일이 너무 오랫동안 머물렀습니다.</p>
+                    
+                    <div class="bg-white/10 rounded-2xl p-3 mb-4 border border-white/10">
+                        <p class="text-slate-400 text-[10px] uppercase font-bold">최종 점수</p>
+                        <p id="final-score" class="text-3xl font-black text-amber-400">0</p>
+                    </div>
+
+                    <div id="nickname-section" class="bg-slate-900/90 rounded-2xl p-4 mb-4 border border-pink-500/30 text-center">
+                        <label id="submit-label" class="block text-pink-300 text-xs font-bold mb-1.5">🏆 명예의 전당 등록</label>
+                        <div class="flex gap-2">
+                            <input id="input-nickname" type="text" maxlength="8" placeholder="닉네임 (최대 8자)" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 placeholder-slate-500 text-center font-bold">
+                            <button id="btn-submit-ranking" class="px-4 py-2 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold rounded-xl text-xs whitespace-nowrap active:scale-95 transition-all shadow-md">
+                                등록
+                            </button>
+                        </div>
+                    </div>
+
+                    <button id="btn-restart" class="w-full py-3 bg-slate-100 hover:bg-white text-slate-900 font-bold rounded-xl shadow-lg transform hover:scale-[1.02] active:scale-95 transition-all text-sm flex items-center justify-center gap-1.5">
+                        다시 시작하기 🔄
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex lg:hidden justify-between items-center px-2 pb-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-500">다음:</span>
+                    <span id="mobile-next-emoji" class="text-2xl">🍒</span>
+                </div>
+                <button id="btn-sound-mobile" class="text-xs bg-slate-900 text-white px-2.5 py-1 rounded-lg font-bold">
+                    소리 🔊
+                </button>
+            </div>
+
+            <canvas id="game-canvas" class="block bg-slate-50/70 rounded-2xl cursor-pointer shadow-inner w-full max-w-[380px]" width="380" height="650"></canvas>
+        </div>
+
+        <div class="w-full max-w-sm lg:w-72 flex flex-col gap-4">
+            
+            <div class="bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-md border border-slate-100">
+                <h3 class="text-sm font-bold text-gray-700 mb-2.5 text-center flex items-center justify-center gap-1">
+                    <span>📚</span> 과일 진화 도감 (작은 순서)
+                </h3>
+                <div class="grid grid-cols-6 lg:grid-cols-4 gap-1.5 text-center" id="evolution-guide">
+                </div>
+            </div>
+
+            <div class="bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-md border border-slate-100 flex flex-col">
+                <div class="text-center mb-2.5">
+                    <h3 id="leaderboard-title" class="text-sm font-bold text-pink-600 flex items-center justify-center gap-1">
+                        <span>🏆</span> 명예의 전당 (TOP 10)
+                    </h3>
+                    <p class="text-[9px] text-gray-500 mt-1 leading-relaxed bg-pink-50 py-1 px-2 rounded-lg border border-pink-100">
+                        🔥 <strong>상시 최고 기록 경쟁 중</strong>이며, 데이터가 초기화 없이 실시간으로 누적 보존됩니다.
+                    </p>
+                </div>
+                
+                <div class="overflow-y-auto max-h-[220px] lg:max-h-[260px] pr-1 flex flex-col gap-1.5 ranking-scroll" id="leaderboard-container">
+                    <div class="flex items-center justify-center py-10 text-xs text-gray-400 gap-1.5">
+                        <svg class="animate-spin h-4 w-4 text-pink-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        실시간 랭킹 확인 중...
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <footer class="w-full text-center text-[11px] text-gray-500 py-3">
+        <p>💡 마우스 클릭, 터치 드래그 또는 <b>키보드 방향키(왼쪽 ←, 오른쪽 →, 아래쪽 ↓)</b>로 과일을 조종하고 낙하시켜 보세요!</p>
+        <p class="mt-1">© 2026 오락실 수박게임. Powered by Matter.js & Firebase Firestore</p>
+    </footer>
+
+    <div id="overwrite-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full mx-4 shadow-2xl border border-pink-100 transform scale-95 transition-transform duration-300">
+            <div class="text-center">
+                <span class="text-5xl block mb-2">⚡</span>
+                <h3 class="text-lg font-black text-slate-800 mb-2">기존 최고 기록 발견</h3>
+                <p class="text-slate-500 text-xs leading-relaxed mb-5">
+                    이미 등록된 닉네임입니다.<br>
+                    기존 기록 <span id="overwrite-old-score" class="font-bold text-pink-500">0</span>점보다 더 높은 <span id="overwrite-new-score" class="font-bold text-emerald-500">0</span>점을 달성했습니다!<br><br>
+                    <strong>이 기록으로 기존 성적을 덮어쓰시겠습니까?</strong>
+                </p>
+                <div class="flex flex-col gap-2">
+                    <button id="btn-overwrite-yes" class="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-xl shadow-md hover:from-emerald-600 hover:to-teal-600 transition-all text-xs">
+                        네, 기존 기록 덮어쓰겠습니다 ✏️
+                    </button>
+                    <button id="btn-overwrite-no" class="w-full py-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold rounded-xl transition-all text-xs">
+                        아니오, 별도의 새 기록으로 남기겠습니다 ➕
+                    </button>
+                    <button id="btn-overwrite-cancel" class="w-full py-1.5 text-slate-400 hover:text-slate-600 transition-all text-[11px]">
+                        취소
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- Firebase SDK 및 모듈 임포트 ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ────────────────────────────────────────────────────────
+        // 🛠️ [모듈 구조 내재화 이식] 외부 파일 변동 없는 완벽 독립 처리
+        // ────────────────────────────────────────────────────────
+        const minigameConfig = JSON.parse(atob(_mg_fbc));
+
+        const app = initializeApp(minigameConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // minigames.js 핵심 데이터 풀 및 마스터 팽창 로직 동일 적용
+        const RAW_GAMES = [
+            { 
+                id: 'watermelon', 
+                name: '🍉 수박게임 플레이', 
+                label: '수박왕'
+            }
+        ];
+
+        const MASTER_GAMES = RAW_GAMES.map(game => {
+            const href = game.href || `/minigame/${game.id}/index.html`;
+            let rawRanks = game.ranks;
+            if (!rawRanks && game.label) {
+                rawRanks = [{ key: game.id, label: game.label }];
+            } else if (!rawRanks) {
+                rawRanks = [{ key: game.id, label: '최강자' }];
+            }
+            const normalizedRanks = rawRanks.map(r => ({
+                key: r.key,
+                label: r.label,
+                path: r.path || ['artifacts', game.id, 'public', 'data', 'leaderboard']
+            }));
+            return { ...game, href, ranks: normalizedRanks };
+        });
+
+        // 팽창 결과를 통한 동적 경로 추출
+        const gameMeta = MASTER_GAMES.find(g => g.id === 'watermelon');
+        const rankMeta = gameMeta.ranks[0];
+        const rankPath = rankMeta.path; // ['artifacts', 'watermelon', 'public', 'data', 'leaderboard']
+        // ────────────────────────────────────────────────────────
+
+        // --- 게임 설정 및 상수 정의 ---
+        const CANVAS_WIDTH = 380; 
+        const CANVAS_HEIGHT = 650;
+        const DEADLINE_Y = 140;   
+        const SPAWN_Y = 85;       
+
+        const FRUIT_TYPES = [
+            { name: "체리", emoji: "🍒", radius: 18, score: 2, color: "#ff4d6d" },      
+            { name: "딸기", emoji: "🍓", radius: 25, score: 4, color: "#ff758f" },      
+            { name: "포도", emoji: "🍇", radius: 33, score: 8, color: "#c77dff" },      
+            { name: "한라봉", emoji: "🍊", radius: 42, score: 16, color: "#ffb703" },    
+            { name: "감", emoji: "🍅", radius: 51, score: 32, color: "#fb8500" },       
+            { name: "사과", emoji: "🍎", radius: 60, score: 64, color: "#e63946" },      
+            { name: "배", emoji: "🍐", radius: 71, score: 128, color: "#e9d8a6" },      
+            { name: "복숭아", emoji: "🍑", radius: 83, score: 256, color: "#ffb5a7" },    
+            { name: "파인애플", emoji: "🍍", radius: 95, score: 512, color: "#f9bec7" },  
+            { name: "멜론", emoji: "🍈", radius: 108, score: 1024, color: "#a7c957" },  
+            { name: "수박", emoji: "🍉", radius: 124, score: 2048, color: "#38b000" }   
+        ];
+
+        // --- 사운드 시스템 ---
+        class SoundManager {
+            constructor() {
+                this.enabled = true;
+                this.ctx = null;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            toggle() {
+                this.enabled = !this.enabled;
+                return this.enabled;
+            }
+            playPop() {
+                if (!this.enabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+            playMerge(level) {
+                if (!this.enabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const baseFreq = 220 + (level * 40);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(baseFreq, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(baseFreq * 1.5, this.ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+            playGameOver() {
+                if (!this.enabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(80, this.ctx.currentTime + 0.8);
+                gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.8);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.8);
+            }
+        }
+
+        const sound = new SoundManager();
+
+        // --- 게임 핵심 변수들 ---
+        let currentScore = 0;
+        let bestScore = 0;
+        let gameOver = false;
+        let currentUser = null;
+        
+        let currentFruitIndex = 0;
+        let nextFruitIndex = 0;
+        let currentX = CANVAS_WIDTH / 2;
+        let isReadyToDrop = true;
+
+        let warningTimer = 0;
+        let particles = [];
+        const keysPressed = {};
+
+        // --- UI 요소 선택 ---
+        const canvas = document.getElementById("game-canvas");
+        const ctx = canvas.getContext("2d");
+        const currentScoreEl = document.getElementById("current-score");
+        const bestScoreEl = document.getElementById("best-score");
+        const finalScoreEl = document.getElementById("final-score");
+        const dangerAlert = document.getElementById("danger-alert");
+        const gameoverScreen = document.getElementById("gameover-screen");
+        const gameoverBox = document.getElementById("gameover-box");
+        const btnRestart = document.getElementById("btn-restart");
+        const btnSound = document.getElementById("btn-sound");
+        const btnSoundMobile = document.getElementById("btn-sound-mobile");
+        const nextFruitPreview = document.getElementById("next-fruit-preview");
+        const nextFruitName = document.getElementById("next-fruit-name");
+        const mobileNextEmoji = document.getElementById("mobile-next-emoji");
+        const evolutionGuide = document.getElementById("evolution-guide");
+        const leaderboardContainer = document.getElementById("leaderboard-container");
+
+        const inputNickname = document.getElementById("input-nickname");
+        const btnSubmitRanking = document.getElementById("btn-submit-ranking");
+        const nicknameSection = document.getElementById("nickname-section");
+
+        const overwriteModal = document.getElementById("overwrite-modal");
+        const btnOverwriteYes = document.getElementById("btn-overwrite-yes");
+        const btnOverwriteNo = document.getElementById("btn-overwrite-no");
+        const btnOverwriteCancel = document.getElementById("btn-overwrite-cancel");
+
+        let pendingRegistration = null; 
+
+        // --- 인게임 토스트 팝업 ---
+        function showToast(message, type = "success") {
+            let toast = document.getElementById("game-toast");
+            if (!toast) {
+                toast = document.createElement("div");
+                toast.id = "game-toast";
+                toast.className = "fixed top-6 left-1/2 transform -translate-x-1/2 px-4 py-2.5 rounded-2xl shadow-2xl border text-xs font-black z-[100] transition-all duration-300 opacity-0 pointer-events-none flex items-center gap-1.5";
+                document.body.appendChild(toast);
+            }
+            if (type === "success") {
+                toast.className = "fixed top-6 left-1/2 transform -translate-x-1/2 px-4 py-2.5 rounded-2xl shadow-2xl border text-xs font-black z-[100] transition-all duration-300 bg-emerald-50 border-emerald-200 text-emerald-800 flex items-center gap-1.5";
+                toast.innerHTML = `<span>✅</span> <span>${message}</span>`;
+            } else {
+                toast.className = "fixed top-6 left-1/2 transform -translate-x-1/2 px-4 py-2.5 rounded-2xl shadow-2xl border text-xs font-black z-[100] transition-all duration-300 bg-rose-50 border-rose-200 text-rose-800 flex items-center gap-1.5";
+                toast.innerHTML = `<span>⚠️</span> <span>${message}</span>`;
+            }
+            toast.classList.remove("opacity-0", "-translate-y-2");
+            toast.classList.add("opacity-100", "translate-y-0");
+            setTimeout(() => {
+                toast.classList.remove("opacity-100", "translate-y-0");
+                toast.classList.add("opacity-0", "-translate-y-2");
+            }, 3000);
+        }
+
+        // --- Firestore 랭킹 로드 & 누적 동기화 ---
+        async function loadleaderboard() {
+            if (!auth.currentUser) return;
+            try {
+                // 🌟 가변 배열 경로 구조 분해 동적 바인딩 적용
+                const leaderboardCol = collection(db, ...rankPath);
+                const querySnapshot = await getDocs(leaderboardCol);
+                
+                const activeleaderboard = [];
+                
+                for (const docSnap of querySnapshot.docs) {
+                    const data = docSnap.data();
+                    const docId = docSnap.id;
+                    activeleaderboard.push({ id: docId, ...data });
+                }
+                
+                activeleaderboard.sort((a, b) => {
+                    if (b.score !== a.score) return b.score - a.score;
+                    return a.timestamp - b.timestamp;
+                });
+                
+                renderleaderboardUI(activeleaderboard.slice(0, 10));
+                return activeleaderboard;
+            } catch (error) {
+                console.error("랭킹 로드 오류:", error);
+                leaderboardContainer.innerHTML = `<p class="text-[10px] text-center text-rose-400 py-6">랭킹 동기화 실패 ❌</p>`;
+            }
+        }
+
+        function renderleaderboardUI(leaderboard) {
+            if (!leaderboard || leaderboard.length === 0) {
+                leaderboardContainer.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-10 text-slate-400 text-xs text-center">
+                        <span class="text-3xl mb-1">📅</span>
+                        <span>등록된 기록이 아직 없습니다.</span>
+                        <span class="text-[10px] text-slate-400 mt-1">첫 번째 명예의 자리를 차지해보세요!</span>
+                    </div>`;
+                return;
+            }
+            
+            let html = '<div class="flex flex-col gap-1.5">';
+            leaderboard.forEach((rank, index) => {
+                let medal = ""; let rankBadge = "";
+                let bgClass = "bg-slate-50/60"; let borderClass = "border-slate-100"; let textClass = "text-slate-700";
+                
+                if (index === 0) {
+                    medal = "🥇"; bgClass = "bg-amber-50/95"; borderClass = "border-amber-200"; textClass = "text-amber-800 font-extrabold";
+                } else if (index === 1) {
+                    medal = "🥈"; bgClass = "bg-slate-100/90"; borderClass = "border-slate-200"; textClass = "text-slate-800 font-extrabold";
+                } else if (index === 2) {
+                    medal = "🥉"; bgClass = "bg-orange-50/90"; borderClass = "border-orange-200"; textClass = "text-orange-800 font-extrabold";
+                } else {
+                    rankBadge = `<span class="inline-block w-5 text-center font-bold text-slate-400 text-xs">${index + 1}</span>`;
+                }
+                
+                const dateObj = new Date(rank.timestamp);
+                const dateStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+
+                html += `
+                    <div class="flex items-center justify-between p-2 rounded-xl border ${borderClass} ${bgClass} shadow-sm transition-all hover:translate-x-0.5">
+                        <div class="flex items-center gap-2 overflow-hidden">
+                            ${medal ? `<span class="text-lg">${medal}</span>` : rankBadge}
+                            <span class="text-xs font-black truncate max-w-[95px] ${textClass}">${rank.nickname}</span>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <p class="text-xs font-black text-rose-600 leading-none">${rank.score.toLocaleString()}점</p>
+                            <p class="text-[8px] text-gray-400 mt-0.5">${dateStr}</p>
+                        </div>
+                    </div>`;
+            });
+            html += '</div>';
+            leaderboardContainer.innerHTML = html;
+        }
+
+        // --- 닉네임 검사 및 분기처리 명예의 전당 등록 ---
+        btnSubmitRanking.addEventListener("click", async () => {
+            const nickname = inputNickname.value.trim();
+            if (!nickname) { showToast("닉네임을 정확히 입력하세요!", "error"); return; }
+            if (nickname.length > 8) { showToast("최대 8자까지만 등록 가능합니다.", "error"); return; }
+
+            btnSubmitRanking.disabled = true;
+            btnSubmitRanking.innerHTML = "처리 중..";
+
+            try {
+                const currentleaderboard = await loadleaderboard() || [];
+                const existingRecords = currentleaderboard.filter(r => r.nickname === nickname);
+
+                if (existingRecords.length > 0) {
+                    const highestRecord = existingRecords.reduce((prev, curr) => (prev.score > curr.score) ? prev : curr);
+
+                    if (currentScore > highestRecord.score) {
+                        pendingRegistration = {
+                            nickname: nickname,
+                            newScore: currentScore,
+                            oldRecordId: highestRecord.id,
+                            oldScore: highestRecord.score
+                        };
+
+                        document.getElementById("overwrite-old-score").textContent = highestRecord.score;
+                        document.getElementById("overwrite-new-score").textContent = currentScore;
+
+                        overwriteModal.classList.remove("opacity-0", "pointer-events-none");
+                        overwriteModal.classList.add("opacity-100");
+                        overwriteModal.firstElementChild.classList.remove("scale-95");
+                        overwriteModal.firstElementChild.classList.add("scale-100");
+                        
+                        btnSubmitRanking.disabled = false;
+                        btnSubmitRanking.innerHTML = "등록";
+                        return;
+                    }
+                }
+
+                // 🌟 동적 경로 가변 배열 주입 전송
+                await addDoc(collection(db, ...rankPath), {
+                    nickname: nickname,
+                    score: currentScore,
+                    timestamp: Date.now()
+                });
+
+                showToast("명예의 전당에 새로운 기록이 등록되었습니다!", "success");
+                nicknameSection.classList.add("hidden");
+                await loadleaderboard();
+
+            } catch (error) {
+                console.error("데이터 등록 오류:", error);
+                showToast("등록 실패. 다시 시도해 주세요.", "error");
+            } finally {
+                btnSubmitRanking.disabled = false;
+                btnSubmitRanking.innerHTML = "등록";
+            }
+        });
+
+        // --- 모달 버튼 핸들러 ---
+        function closeOverwriteModal() {
+            overwriteModal.classList.add("opacity-0", "pointer-events-none");
+            overwriteModal.classList.remove("opacity-100");
+            overwriteModal.firstElementChild.classList.add("scale-95");
+            overwriteModal.firstElementChild.classList.remove("scale-100");
+        }
+
+        btnOverwriteYes.addEventListener("click", async () => {
+            if (!pendingRegistration) return;
+            btnOverwriteYes.disabled = true;
+            btnOverwriteYes.textContent = "업데이트 중...";
+
+            try {
+                // 🌟 동적 타겟 도큐먼트 덮어쓰기 업데이트 처리
+                await setDoc(doc(db, ...rankPath, pendingRegistration.oldRecordId), {
+                    nickname: pendingRegistration.nickname,
+                    score: pendingRegistration.newScore,
+                    timestamp: Date.now()
+                });
+
+                showToast("기존 최고 기록이 성공적으로 갱신되었습니다!", "success");
+                nicknameSection.classList.add("hidden");
+                closeOverwriteModal();
+                await loadleaderboard();
+            } catch (e) {
+                console.error("덮어쓰기 오류:", e);
+                showToast("업데이트 오류 발생", "error");
+            } finally {
+                btnOverwriteYes.disabled = false;
+                btnOverwriteYes.textContent = "네, 기존 기록 덮어쓰겠습니다 ✏️";
+            }
+        });
+
+        btnOverwriteNo.addEventListener("click", async () => {
+            if (!pendingRegistration) return;
+            btnOverwriteNo.disabled = true;
+            btnOverwriteNo.textContent = "추가 중...";
+
+            try {
+                // 🌟 동적 경로 개별 추가 분기 처리
+                await addDoc(collection(db, ...rankPath), {
+                    nickname: pendingRegistration.nickname,
+                    score: pendingRegistration.newScore,
+                    timestamp: Date.now()
+                });
+
+                showToast("두 개의 기록을 모두 보존하여 등록했습니다!", "success");
+                nicknameSection.classList.add("hidden");
+                closeOverwriteModal();
+                await loadleaderboard();
+            } catch (e) {
+                console.error("추가등록 에러:", e);
+                showToast("추가 중 오류 발생", "error");
+            } finally {
+                btnOverwriteNo.disabled = false;
+                btnOverwriteNo.textContent = "아니오, 새로 등록하겠습니다 ➕";
+            }
+        });
+
+        btnOverwriteCancel.addEventListener("click", () => {
+            pendingRegistration = null;
+            closeOverwriteModal();
+        });
+
+        // --- Firebase 익명 인증 트리거 ---
+        const initAuthAndSync = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Firebase Auth Error:", error);
+            }
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                await loadleaderboard();
+            }
+        });
+
+        initAuthAndSync();
+
+        // --- 수박게임 가이드 도감 렌더링 ---
+        function renderEvolutionGuide() {
+            evolutionGuide.innerHTML = "";
+            FRUIT_TYPES.forEach((fruit, idx) => {
+                const item = document.createElement("div");
+                item.className = "flex flex-col items-center p-1 bg-slate-50 border border-slate-100 rounded-xl hover:shadow-sm";
+                item.innerHTML = `
+                    <span class="text-xl">${fruit.emoji}</span>
+                    <span class="text-[9px] font-black text-gray-700 mt-0.5 leading-none">${fruit.name}</span>
+                    <span class="text-[8px] text-gray-400 mt-0.5">Lv.${idx + 1}</span>`;
+                evolutionGuide.appendChild(item);
+            });
+        }
+        renderEvolutionGuide();
+
+        // --- Matter.js 물리 엔진 세팅 ---
+        const { Engine, World, Bodies, Body, Composite, Events } = Matter;
+        const engine = Engine.create({ gravity: { y: 2.1 } });
+        const world = engine.world;
+
+        const WALL_THICKNESS = 40;
+        const leftWall = Bodies.rectangle(0 - WALL_THICKNESS/2 + 15, CANVAS_HEIGHT/2, WALL_THICKNESS, CANVAS_HEIGHT, { isStatic: true, friction: 0.1 });
+        const rightWall = Bodies.rectangle(CANVAS_WIDTH + WALL_THICKNESS/2 - 15, CANVAS_HEIGHT/2, WALL_THICKNESS, CANVAS_HEIGHT, { isStatic: true, friction: 0.1 });
+        const ground = Bodies.rectangle(CANVAS_WIDTH/2, CANVAS_HEIGHT + WALL_THICKNESS/2 - 15, CANVAS_WIDTH, WALL_THICKNESS, { isStatic: true, friction: 0.3 });
+
+        World.add(world, [leftWall, rightWall, ground]);
+
+        function getRandomStartFruit() { return Math.floor(Math.random() * 4); }
+
+        function rollNextFruits() {
+            currentFruitIndex = nextFruitIndex;
+            nextFruitIndex = getRandomStartFruit();
+            nextFruitPreview.textContent = FRUIT_TYPES[nextFruitIndex].emoji;
+            nextFruitName.textContent = FRUIT_TYPES[nextFruitIndex].name;
+            mobileNextEmoji.textContent = FRUIT_TYPES[nextFruitIndex].emoji;
+        }
+
+        function createFruitBody(x, y, index) {
+            const fruit = FRUIT_TYPES[index];
+            const body = Bodies.circle(x, y, fruit.radius, {
+                restitution: 0.18, friction: 0.12, density: 0.001 * (index + 1), label: "fruit"
+            });
+            body.fruitType = index;
+            body.spawnTime = Date.now();
+            return body;
+        }
+
+        function spawnParticles(x, y, color) {
+            for (let i = 0; i < 15; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8,
+                    radius: Math.random() * 4 + 3, color: color, alpha: 1, decay: Math.random() * 0.04 + 0.02
+                });
+            }
+        }
+
+        // --- 충돌 판정 및 머지(Merge) 합성 진화 ---
+        Events.on(engine, 'collisionStart', (event) => {
+            const pairs = event.pairs;
+            let bodiesToRemove = new Set();
+            let mergesToCreate = [];
+
+            pairs.forEach((pair) => {
+                const bodyA = pair.bodyA; const bodyB = pair.bodyB;
+                if (bodyA.label === "fruit" && bodyB.label === "fruit") {
+                    if (bodyA.fruitType === bodyB.fruitType && !bodiesToRemove.has(bodyA) && !bodiesToRemove.has(bodyB)) {
+                        bodiesToRemove.add(bodyA); bodiesToRemove.add(bodyB);
+                        const midX = (bodyA.position.x + bodyB.position.x) / 2;
+                        const midY = (bodyA.position.y + bodyB.position.y) / 2;
+
+                        if (bodyA.fruitType === FRUIT_TYPES.length - 1) {
+                            mergesToCreate.push({ x: midX, y: midY, nextType: -1 });
+                        } else {
+                            mergesToCreate.push({ x: midX, y: midY, nextType: bodyA.fruitType + 1 });
+                        }
+                    }
+                }
+            });
+
+            bodiesToRemove.forEach(body => { World.remove(world, body); });
+
+            mergesToCreate.forEach(merge => {
+                if (merge.nextType !== -1) {
+                    const nextFruit = createFruitBody(merge.x, merge.y, merge.nextType);
+                    World.add(world, nextFruit);
+                    addScore(FRUIT_TYPES[merge.nextType].score);
+                    sound.playMerge(merge.nextType);
+                    spawnParticles(merge.x, merge.y, FRUIT_TYPES[merge.nextType].color);
+                } else {
+                    addScore(5000);
+                    sound.playMerge(11);
+                    spawnParticles(merge.x, merge.y, "#ef4444");
+                    showToast("🍉 대왕수박 두 개가 만나 은하가 창조되었습니다! +5000", "success");
+                }
+            });
+        });
+
+        function addScore(pts) {
+            currentScore += pts; currentScoreEl.textContent = currentScore;
+            if (currentScore > bestScore) { bestScore = currentScore; bestScoreEl.textContent = bestScore; }
+        }
+
+        function getClampedX(clientX) {
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = (clientX - rect.left) * (CANVAS_WIDTH / rect.width);
+            const r = FRUIT_TYPES[currentFruitIndex].radius;
+            return Math.max(15 + r, Math.min(canvasX, CANVAS_WIDTH - 15 - r));
+        }
+
+        function handlePointerMove(e) {
+            if (gameOver || !isReadyToDrop) return;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            currentX = getClampedX(clientX);
+        }
+
+        function handlePointerEnd() {
+            if (gameOver || !isReadyToDrop) return;
+            const fruitBody = createFruitBody(currentX, SPAWN_Y, currentFruitIndex);
+            World.add(world, fruitBody);
+            sound.playPop(); isReadyToDrop = false;
+            
+            setTimeout(() => { if (!gameOver) { rollNextFruits(); isReadyToDrop = true; } }, 550);
+        }
+
+        canvas.addEventListener("mousemove", handlePointerMove);
+        canvas.addEventListener("touchmove", handlePointerMove, { passive: true });
+        canvas.addEventListener("mouseup", handlePointerEnd);
+        canvas.addEventListener("touchend", handlePointerEnd);
+
+        window.addEventListener("keydown", (e) => {
+            if (["ArrowLeft", "ArrowRight", "ArrowDown"].includes(e.key)) e.preventDefault();
+            if (gameOver) return;
+            keysPressed[e.key] = true;
+            if (e.key === "ArrowDown") handlePointerEnd();
+        });
+
+        window.addEventListener("keyup", (e) => { keysPressed[e.key] = false; });
+        window.addEventListener("blur", () => { for (let key in keysPressed) { keysPressed[key] = false; } });
+
+        const handleSoundToggle = () => {
+            const state = sound.toggle(); updateSoundButtons(state); sound.init();
+        };
+
+        function updateSoundButtons(enabled) {
+            btnSound.textContent = enabled ? "소리 켜짐 🔊" : "소리 꺼짐 🔇";
+            btnSoundMobile.textContent = enabled ? "소리 🔊" : "소리 🔇";
+        }
+
+        btnSound.addEventListener("click", handleSoundToggle);
+        btnSoundMobile.addEventListener("click", handleSoundToggle);
+
+        function checkGameOver() {
+            const allBodies = Composite.allBodies(world);
+            let fruitAboveLineCount = 0; const now = Date.now();
+
+            allBodies.forEach(body => {
+                if (body.label === "fruit" && now - body.spawnTime > 700) {
+                    if (body.position.y - FRUIT_TYPES[body.fruitType].radius < DEADLINE_Y) fruitAboveLineCount++;
+                }
+            });
+
+            if (fruitAboveLineCount > 0) {
+                warningTimer += 1 / 60;
+                if (warningTimer > 0.15) dangerAlert.classList.remove("hidden");
+                else dangerAlert.classList.add("hidden");
+                if (warningTimer > 4.0) triggerGameOver();
+            } else {
+                warningTimer = 0; dangerAlert.classList.add("hidden");
+            }
+        }
+
+        function triggerGameOver() {
+            gameOver = true; sound.playGameOver();
+            if (currentScore > bestScore) { bestScore = currentScore; bestScoreEl.textContent = bestScore; }
+            finalScoreEl.textContent = currentScore;
+            nicknameSection.classList.remove("hidden"); inputNickname.value = "";
+            gameoverScreen.classList.remove("opacity-0", "pointer-events-none");
+            gameoverScreen.classList.add("opacity-100");
+            gameoverBox.classList.replace("scale-90", "scale-100");
+        }
+
+        function resetGame() {
+            const allBodies = Composite.allBodies(world);
+            allBodies.forEach(body => { if (body !== leftWall && body !== rightWall && body !== ground) World.remove(world, body); });
+            currentScore = 0; currentScoreEl.textContent = "0"; gameOver = false; warningTimer = 0; particles = [];
+            dangerAlert.classList.add("hidden");
+            gameoverScreen.classList.replace("opacity-100", "opacity-0"); gameoverScreen.classList.add("pointer-events-none");
+            gameoverBox.classList.replace("scale-100", "scale-90");
+            nextFruitIndex = getRandomStartFruit(); rollNextFruits(); isReadyToDrop = true;
+        }
+
+        btnRestart.addEventListener("click", resetGame);
+
+        function draw() {
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            ctx.fillStyle = "rgba(15, 23, 42, 0.04)"; ctx.fillRect(15, 0, CANVAS_WIDTH - 30, CANVAS_HEIGHT - 15);
+
+            ctx.beginPath(); ctx.setLineDash([10, 8]); ctx.moveTo(15, DEADLINE_Y); ctx.lineTo(CANVAS_WIDTH - 15, DEADLINE_Y);
+            if (warningTimer > 0.15) {
+                ctx.strokeStyle = `rgba(239, 68, 68, ${Math.abs(Math.sin(Date.now() * 0.015))})`; ctx.lineWidth = 3.5;
+            } else {
+                ctx.strokeStyle = "rgba(236, 72, 153, 0.45)"; ctx.lineWidth = 2;
+            }
+            ctx.stroke(); ctx.setLineDash([]); 
+
+            if (isReadyToDrop && !gameOver) {
+                ctx.beginPath(); ctx.moveTo(currentX, SPAWN_Y); ctx.lineTo(currentX, CANVAS_HEIGHT - 15);
+                ctx.strokeStyle = "rgba(244, 63, 94, 0.15)"; ctx.lineWidth = 2.5; ctx.stroke();
+            }
+
+            Composite.allBodies(world).forEach(body => {
+                if (body.label === "fruit") {
+                    const fruit = FRUIT_TYPES[body.fruitType]; const radius = fruit.radius;
+                    ctx.save(); ctx.translate(body.position.x, body.position.y); ctx.rotate(body.angle);
+                    const grad = ctx.createRadialGradient(-radius * 0.35, -radius * 0.35, radius * 0.1, 0, 0, radius);
+                    grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.25, fruit.color); grad.addColorStop(1, adjustColorBrightness(fruit.color, -30));
+                    ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fillStyle = grad; ctx.fill();
+                    ctx.strokeStyle = adjustColorBrightness(fruit.color, -15); ctx.lineWidth = 1.8; ctx.stroke();
+                    ctx.font = `${radius * 1.15}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(fruit.emoji, 0, 0);
+                    ctx.restore();
+                }
+            });
+
+            if (isReadyToDrop && !gameOver) {
+                const previewFruit = FRUIT_TYPES[currentFruitIndex];
+                ctx.save(); ctx.translate(currentX, SPAWN_Y);
+                const grad = ctx.createRadialGradient(-previewFruit.radius * 0.35, -previewFruit.radius * 0.35, previewFruit.radius * 0.1, 0, 0, previewFruit.radius);
+                grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.25, previewFruit.color); grad.addColorStop(1, adjustColorBrightness(previewFruit.color, -20));
+                ctx.beginPath(); ctx.arc(0, 0, previewFruit.radius, 0, Math.PI * 2); ctx.fillStyle = grad; ctx.fill();
+                ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 1.5; ctx.stroke();
+                ctx.font = `${previewFruit.radius * 1.15}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(previewFruit.emoji, 0, 0);
+                ctx.restore();
+            }
+
+            ctx.fillStyle = "rgba(30, 41, 59, 0.95)";
+            ctx.fillRect(0, 0, 15, CANVAS_HEIGHT); ctx.fillRect(CANVAS_WIDTH - 15, 0, 15, CANVAS_HEIGHT); ctx.fillRect(0, CANVAS_HEIGHT - 15, CANVAS_WIDTH, 15);
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.18; p.alpha -= p.decay;
+                if (p.alpha <= 0) { particles.splice(i, 1); continue; }
+                ctx.save(); ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+            }
+        }
+
+        function adjustColorBrightness(hex, percent) {
+            let num = parseInt(hex.replace("#",""), 16), amt = Math.round(2.55 * percent),
+                R = (num >> 16) + amt, G = (num >> 8 & 0x00FF) + amt, B = (num & 0x0000FF) + amt;
+            return "#" + (0x1000000 + (R<255?R<0?0:R:255)*0x10000 + (G<255?G<0?0:G:255)*0x100 + (B<255?B<0?0:B:255)).toString(16).slice(1);
+        }
+
+        function loop() {
+            Matter.Engine.update(engine, 1000 / 60);
+            if (isReadyToDrop && !gameOver) {
+                const r = FRUIT_TYPES[currentFruitIndex].radius;
+                if (keysPressed["ArrowLeft"]) currentX = Math.max(15 + r, currentX - 7);
+                if (keysPressed["ArrowRight"]) currentX = Math.min(CANVAS_WIDTH - 15 - r, currentX + 7);
+            }
+            if (!gameOver) checkGameOver();
+            draw(); requestAnimationFrame(loop);
+        }
+
+        // 🌟 실시간 라벨 및 마스터 메타 데이터 구조 UI 유기적 치환 결합
+        window.onload = function() {
+            if (gameMeta && rankMeta) {
+                document.getElementById('game-title-header').textContent = gameMeta.name;
+                document.getElementById('leaderboard-title').innerHTML = `<span>🏆</span> ${rankMeta.label} (TOP 10)`;
+                document.getElementById('submit-label').textContent = `🏆 ${rankMeta.label} 등록`;
+            }
+            nextFruitIndex = getRandomStartFruit(); rollNextFruits(); requestAnimationFrame(loop);
+        };
+    </script>
+  <script defer src="/minigame/copyright-notice.js"></script>
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#09061b" />
+  <meta name="description" content="10곡을 즐기는 4레인 웹 리듬게임, BEAT CIRCUIT" />
+  <title>BEAT CIRCUIT · 오락실 리듬게임</title>
+  <script src="/_runtime/firebase-config?app=minigame"></script>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="오락실로 돌아가기">
+        <span class="brand-mark">BC</span>
+        <span>
+          <strong>BEAT CIRCUIT</strong>
+          <small>ARCADE RHYTHM LAB</small>
+        </span>
+      </a>
+      <div class="topbar-actions">
+        <span id="connectionStatus" class="connection-pill"><i></i> 연결 중</span>
+        <button id="creditsButton" class="icon-button" type="button">음원 정보</button>
+        <a class="icon-button" href="/">나가기</a>
+      </div>
+    </header>
+
+    <main>
+      <section id="selectView" class="view select-view">
+        <div class="hero-layout">
+          <div class="hero-copy">
+          <p class="eyebrow">TEN TRACKS · TEN LEADERBOARDS</p>
+          <h1>오락실<br /><span>리듬게임</span></h1>
+          <p>곡을 고르고 4개의 레인을 두드리세요. 모든 곡은 서로 다른 명예의 전당을 갖습니다.</p>
+          <div class="key-guide" aria-label="조작키 안내">
+            <kbd>D</kbd><kbd>F</kbd><kbd>J</kbd><kbd>K</kbd>
+            <span>또는 화면 터치</span>
+          </div>
+          </div>
+
+          <aside class="overall-leaderboard" aria-labelledby="overallLeaderboardTitle">
+            <div class="overall-leaderboard-head">
+              <div>
+                <p class="eyebrow">ALL TRACK RANKING</p>
+                <h2 id="overallLeaderboardTitle">종합 리더보드</h2>
+              </div>
+              <span>BEST 5 TRACKS</span>
+            </div>
+            <div id="overallLeaderboardList" class="overall-leaderboard-list" aria-live="polite">
+              <div class="overall-empty"><div class="loader"></div><span>종합 순위를 불러오는 중...</span></div>
+            </div>
+            <p class="overall-leaderboard-note">서로 다른 5곡을 등록한 플레이어만 집계됩니다.</p>
+          </aside>
+        </div>
+
+        <section class="rhythm-king-rules" aria-labelledby="rhythmKingTitle">
+          <div class="king-rule-title">
+            <span aria-hidden="true">👑</span>
+            <div>
+              <p class="eyebrow">OVERALL CHAMPION</p>
+              <h2 id="rhythmKingTitle">리듬왕 선정 규칙</h2>
+            </div>
+          </div>
+          <div class="king-rule-grid">
+            <div><strong>01</strong><span>서로 다른 노래를<br /><b>최소 5곡</b> 등록</span></div>
+            <div><strong>02</strong><span>곡별 1~10위에<br /><b>25·18·15·12·10·8·6·4·2·1점</b></span></div>
+            <div><strong>03</strong><span>가장 높은<br /><b>5곡의 포인트 합산</b></span></div>
+            <div><strong>04</strong><span>동점은 <b>1위 횟수 → 정확도 → 콤보 → 먼저 달성</b> 순</span></div>
+          </div>
+          <p>게시판에는 위 조건을 만족한 종합 1명만 <b>리듬왕</b>으로 표시됩니다. 닉네임은 곡마다 동일하게 입력해 주세요.</p>
+        </section>
+
+        <div class="catalog-layout">
+          <div>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">TRACK SELECT</p>
+                <h2>플레이할 곡을 선택하세요</h2>
+              </div>
+              <span class="track-count">10 TRACKS</span>
+            </div>
+            <div id="songGrid" class="song-grid" aria-label="곡 목록"></div>
+          </div>
+
+          <aside id="songDetail" class="song-detail" aria-live="polite">
+            <div class="detail-art" id="detailArt">
+              <div class="vinyl-ring"></div>
+              <span id="detailIndex">01</span>
+            </div>
+            <div class="detail-badges">
+              <span id="detailLicense" class="badge">ORIGINAL</span>
+              <span id="detailDifficulty" class="badge ghost">NORMAL</span>
+            </div>
+            <p class="detail-kicker" id="detailKicker">ORIGINAL TRACK</p>
+            <h2 id="detailTitle">Neon Sprint</h2>
+            <p id="detailArtist" class="detail-artist">오락실 Original</p>
+            <p id="detailDescription" class="detail-description"></p>
+            <dl class="detail-stats">
+              <div><dt>BPM</dt><dd id="detailBpm">132</dd></div>
+              <div><dt>PLAY</dt><dd id="detailLength">약 65초</dd></div>
+              <div><dt>MY BEST</dt><dd id="detailBest">0</dd></div>
+            </dl>
+            <div class="speed-setting">
+              <div class="speed-label"><span>노트 속도</span><output id="detailSpeedValue">1.0x</output></div>
+              <div class="speed-controls">
+                <button id="detailSpeedDown" type="button" aria-label="노트 속도 0.1 낮추기">−</button>
+                <input id="detailSpeedRange" type="range" min="0.5" max="3" step="0.1" value="1" aria-label="노트 속도" />
+                <button id="detailSpeedUp" type="button" aria-label="노트 속도 0.1 높이기">＋</button>
+              </div>
+              <p>판정 타이밍은 그대로이며 노트의 이동 속도만 바뀝니다.</p>
+            </div>
+            <button id="playButton" class="primary-button" type="button">
+              <span>▶</span> 이 곡으로 시작
+            </button>
+            <button id="leaderboardButton" class="secondary-button" type="button">
+              곡별 리더보드 보기
+            </button>
+            <p id="detailCredit" class="detail-credit"></p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="gameView" class="view game-view hidden" aria-label="리듬게임 플레이 화면">
+        <div class="game-header">
+          <button id="quitButton" class="icon-button" type="button">← 곡 선택</button>
+          <div class="now-playing">
+            <span id="playingIndex">01</span>
+            <div><strong id="playingTitle">Neon Sprint</strong><small id="playingArtist">오락실 Original</small></div>
+          </div>
+          <div class="hud-score"><small>SCORE</small><strong id="scoreValue">0</strong></div>
+        </div>
+
+        <div class="game-speed-strip">
+          <span>NOTE SPEED</span>
+          <button id="gameSpeedDown" type="button" aria-label="노트 속도 0.1 낮추기">−</button>
+          <input id="gameSpeedRange" type="range" min="0.5" max="3" step="0.1" value="1" aria-label="플레이 중 노트 속도" />
+          <output id="gameSpeedValue">1.0x</output>
+          <button id="gameSpeedUp" type="button" aria-label="노트 속도 0.1 높이기">＋</button>
+        </div>
+
+        <div class="game-layout">
+          <div class="game-stage-wrap">
+            <div class="progress-track"><span id="songProgress"></span></div>
+            <canvas id="gameCanvas" width="720" height="760" aria-label="4레인 리듬게임 노트"></canvas>
+            <div id="loadingOverlay" class="stage-overlay">
+              <div class="loader"></div>
+              <strong id="loadingTitle">음원을 준비하고 있습니다</strong>
+              <span id="loadingMessage">선택한 곡 하나만 불러옵니다.</span>
+            </div>
+            <div id="countdownOverlay" class="stage-overlay hidden" aria-live="assertive">
+              <strong id="countdownValue" class="countdown-value">3</strong>
+              <span>READY TO SYNC</span>
+            </div>
+          </div>
+
+          <aside class="play-stats">
+            <div class="combo-panel">
+              <small>COMBO</small>
+              <strong id="comboValue">0</strong>
+              <span id="judgementValue">READY</span>
+            </div>
+            <dl>
+              <div><dt>PERFECT</dt><dd id="perfectValue">0</dd></div>
+              <div><dt>GREAT</dt><dd id="greatValue">0</dd></div>
+              <div><dt>GOOD</dt><dd id="goodValue">0</dd></div>
+              <div><dt>MISS</dt><dd id="missValue">0</dd></div>
+              <div><dt>ACCURACY</dt><dd id="accuracyValue">100.0%</dd></div>
+            </dl>
+            <div class="timing-guide">
+              <span><i class="perfect-dot"></i> ±80ms</span>
+              <span><i class="great-dot"></i> ±140ms</span>
+              <span><i class="good-dot"></i> ±220ms</span>
+            </div>
+          </aside>
+        </div>
+
+        <div class="touch-controls" aria-label="터치 조작 영역">
+          <button type="button" data-lane="0"><span>D</span></button>
+          <button type="button" data-lane="1"><span>F</span></button>
+          <button type="button" data-lane="2"><span>J</span></button>
+          <button type="button" data-lane="3"><span>K</span></button>
+        </div>
+      </section>
+
+      <section id="resultView" class="view result-view hidden" aria-label="게임 결과">
+        <div class="result-card">
+          <p class="eyebrow">TRACK COMPLETE</p>
+          <div id="resultGrade" class="result-grade">S</div>
+          <h1 id="resultTitle">Neon Sprint</h1>
+          <p id="resultSubtitle">회로와 완벽하게 동기화됐습니다.</p>
+          <div class="result-score"><small>FINAL SCORE</small><strong id="resultScore">0</strong></div>
+          <div class="result-grid">
+            <div><small>ACCURACY</small><strong id="resultAccuracy">0%</strong></div>
+            <div><small>MAX COMBO</small><strong id="resultCombo">0</strong></div>
+            <div><small>PERFECT</small><strong id="resultPerfect">0</strong></div>
+            <div><small>MISS</small><strong id="resultMiss">0</strong></div>
+          </div>
+
+          <div class="submit-panel">
+            <label for="nicknameInput">이 곡의 리더보드에 기록하기</label>
+            <div class="submit-row">
+              <input id="nicknameInput" maxlength="12" autocomplete="nickname" placeholder="닉네임 (최대 12자)" />
+              <button id="submitScoreButton" class="primary-button" type="button">기록 등록</button>
+            </div>
+            <p id="submitHint">곡마다 최고 점수가 별도로 저장됩니다.</p>
+          </div>
+
+          <div class="result-actions">
+            <button id="retryButton" class="primary-button" type="button">다시 플레이</button>
+            <button id="resultLeaderboardButton" class="secondary-button" type="button">리더보드</button>
+            <button id="selectButton" class="secondary-button" type="button">다른 곡</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="leaderboardDialog" class="modal-card">
+    <form method="dialog" class="modal-header">
+      <div><p class="eyebrow">HALL OF FAME</p><h2 id="leaderboardTitle">곡별 리더보드</h2></div>
+      <button class="modal-close" aria-label="닫기">×</button>
+    </form>
+    <div id="leaderboardList" class="leaderboard-list"></div>
+    <p class="modal-note">동점일 경우 먼저 등록한 기록이 위에 표시됩니다.</p>
+  </dialog>
+
+  <dialog id="creditsDialog" class="modal-card credits-modal">
+    <form method="dialog" class="modal-header">
+      <div><p class="eyebrow">MUSIC LICENSES</p><h2>음원 정보</h2></div>
+      <button class="modal-close" aria-label="닫기">×</button>
+    </form>
+    <div class="license-copy">
+      <p><strong>Neon Sprint</strong>와 <strong>Starlight Drive</strong>는 이 게임을 위해 직접 구성한 오리지널 신스 곡입니다.</p>
+      <p>아래 8곡은 Kevin MacLeod가 게임을 포함한 미디어 사용을 허용한 Creative Commons Attribution 4.0 라이선스로 제공합니다. 게임에 맞춰 재생 구간과 차트가 구성되었습니다.</p>
+    </div>
+    <div id="creditsList" class="credits-list"></div>
+    <p class="modal-note">License: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a></p>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="./game.js"></script>
+  <script defer src="/minigame/copyright-notice.js"></script>
+</body>
+</html>

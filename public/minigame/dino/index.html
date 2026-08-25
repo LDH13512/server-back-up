@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오락실 공룡</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Orbitron', 'Noto Sans KR', sans-serif;
+            background-color: #020617;
+        }
+        .neon-border {
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+            border: 1px solid rgba(6, 182, 212, 0.5);
+        }
+        .neon-text {
+            text-shadow: 0 0 8px rgba(6, 182, 212, 0.6);
+        }
+    </style>
+  <script src="/_runtime/firebase-config?app=minigame"></script>
+  <meta name="author" content="게시판 운영자">
+  <meta name="copyright" content="© 2026 게시판">
+  <meta name="rights" content="AI 도구를 제작 보조로 활용해 운영자가 기획·구현·편집한 자체 콘텐츠">
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden select-none">
+
+    <header class="w-full bg-slate-900/80 backdrop-blur-md border-b border-cyan-500/30 p-4 sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-black tracking-widest text-cyan-400 neon-text">DINOSAUR</h1>
+            <div id="auth-status" class="text-xs font-bold text-rose-400 bg-rose-950/40 px-3 py-1.5 rounded-full border border-rose-500/30 flex items-center gap-1.5 animate-pulse">
+                <span class="w-2 h-2 rounded-full bg-rose-500"></span> 인증 연결 중...
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl w-full mx-auto p-4 flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 my-auto items-start">
+        
+        <div class="lg:col-span-2 flex flex-col gap-4">
+            <div class="flex justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-xl">
+                <div>
+                    <span class="text-xs uppercase text-slate-400 block font-semibold tracking-wider">Current Score</span>
+                    <span id="live-score" class="text-3xl font-black text-cyan-400 font-mono">00000</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs uppercase text-slate-400 block font-semibold tracking-wider">Personal High</span>
+                    <span id="best-score" class="text-3xl font-black text-fuchsia-400 font-mono">00000</span>
+                </div>
+            </div>
+
+            <div id="game-container" class="relative bg-slate-950 rounded-2xl overflow-hidden neon-border aspect-[8/3] w-full">
+                <canvas id="gameCanvas" width="800" height="300" class="w-full h-full block"></canvas>
+                
+                <div id="game-overlay" class="absolute inset-0 bg-slate-950/80 flex flex-col justify-center items-center backdrop-blur-sm z-10 transition-all duration-300">
+                    <div id="overlay-content" class="text-center p-6 max-w-md">
+                        <h2 id="overlay-title" class="text-3xl font-black text-cyan-400 tracking-wider mb-2 neon-text">오락실 DINO JUMP</h2>
+                        <p id="overlay-desc" class="text-sm text-slate-400 mb-6 font-sans">최고 기록을 경신하세요! 짧은 점프(탭), 긴 점프(홀드), 숙이기(↓). 타이밍을 마스터하세요!</p>
+                        <button id="btn-action" class="cursor-pointer px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black tracking-widest rounded-xl shadow-lg shadow-cyan-500/20 active:scale-95 transition-transform duration-100">
+                            START GAME
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 lg:hidden">
+                <button id="touch-jump" class="bg-slate-900 border border-slate-800 active:bg-cyan-950/40 active:border-cyan-500 h-20 rounded-xl font-bold tracking-widest text-cyan-400 flex flex-col justify-center items-center transition-all">
+                    <span>JUMP</span>
+                    <span class="text-xs text-slate-500 font-sans mt-1">탭(짧게) / 홀드(길게)</span>
+                </button>
+                <button id="touch-duck" class="bg-slate-900 border border-slate-800 active:bg-fuchsia-950/40 active:border-fuchsia-500 h-20 rounded-xl font-bold tracking-widest text-fuchsia-400 flex flex-col justify-center items-center transition-all">
+                    <span>DUCK</span>
+                    <span class="text-xs text-slate-500 font-sans mt-1">누르고 있기 (타이밍 주의)</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 flex flex-col gap-4 shadow-xl lg:h-[456px]">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-black text-lg tracking-wider text-fuchsia-400 flex items-center gap-2">
+                    <span class="w-2 h-4 bg-fuchsia-500 inline-block rounded-xs"></span> TOP 10 HALL OF FAME
+                </h3>
+                <span class="text-[10px] text-slate-400 font-sans bg-slate-800 px-1.8 py-0.5 rounded border border-slate-700">이번주 기록</span>
+            </div>
+            
+            <div id="leaderboard-list" class="flex flex-col gap-2 overflow-y-auto pr-1 flex-grow scrollbar-thin scrollbar-thumb-slate-800">
+                <div class="text-center py-10 text-sm text-slate-500 font-sans animate-pulse">리더보드 데이터를 동기화 중입니다...</div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="w-full text-center py-4 border-t border-slate-900 text-[10px] text-slate-600 font-sans tracking-wide">
+        &copy; 2026 DINO ARCADE MINIGAME MODULE. ALL RIGHTS RESERVED.
+    </footer>
+
+    <div id="modal-score-submit" class="hidden fixed inset-0 bg-slate-950/90 items-center justify-center p-4 z-50 backdrop-blur-md">
+        <div class="bg-slate-900 border border-cyan-500/30 rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl relative overflow-hidden">
+            <div class="absolute -right-10 -top-10 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl"></div>
+            <h3 class="text-xl font-black text-cyan-400 mb-1 tracking-wider">NEW RANKING RECORD!</h3>
+            <p class="text-xs text-slate-400 mb-4 font-sans">명예의 전당에 등재될 닉네임을 입력하세요.</p>
+            
+            <div class="bg-slate-950 px-4 py-3 rounded-xl border border-slate-800 mb-4 flex justify-between items-center font-mono">
+                <span class="text-xs text-slate-500 uppercase">Your Score</span>
+                <span id="modal-target-score" class="text-2xl font-black text-fuchsia-400">00000</span>
+            </div>
+
+            <input id="input-nickname" type="text" maxlength="10" placeholder="NICKNAME (최대 10자)" class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 focus:outline-none rounded-xl px-4 py-3 text-center font-bold tracking-widest text-slate-100 placeholder-slate-600 text-sm uppercase mb-4 transition-colors">
+            
+            <button id="btn-submit-score" class="cursor-pointer w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black tracking-widest rounded-xl shadow-lg shadow-cyan-500/10 active:scale-98 transition-transform">
+                RECORD SUBMIT
+            </button>
+        </div>
+    </div>
+
+    <div id="modal-duplicate-branch" class="hidden fixed inset-0 bg-slate-950/90 items-center justify-center p-4 z-50 backdrop-blur-md">
+        <div class="bg-slate-900 border border-fuchsia-500/40 rounded-2xl max-w-md w-full p-6 text-center shadow-2xl relative overflow-hidden">
+            <div class="absolute -left-10 -bottom-10 w-32 h-32 bg-fuchsia-500/10 rounded-full blur-2xl"></div>
+            <div class="w-12 h-12 rounded-full bg-fuchsia-950/50 border border-fuchsia-500 flex items-center justify-center text-fuchsia-400 mx-auto mb-3 font-black text-xl font-mono">?</div>
+            <h3 class="text-xl font-black text-fuchsia-400 mb-1 tracking-wider">DUPLICATE NICKNAME DETECTED</h3>
+            <p class="text-xs text-slate-400 mb-5 font-sans leading-relaxed">이미 동일한 이름의 랭킹 기록이 존재합니다.<br>이번 기록이 기존 기록보다 높습니다. 처리 방식을 선택하세요.</p>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button id="btn-branch-overwrite" class="cursor-pointer p-4 bg-slate-950 hover:bg-slate-900 border border-cyan-500/30 hover:border-cyan-400 rounded-xl text-left transition-all">
+                    <span class="block text-xs font-black text-cyan-400 uppercase tracking-wider mb-1">기존 기록 덮어쓰기</span>
+                    <span class="block text-[10px] text-slate-500 font-sans leading-tight">기존 도큐먼트를 추적하여 새로운 정보로 업데이트합니다.</span>
+                </button>
+                <button id="btn-branch-new" class="cursor-pointer p-4 bg-slate-950 hover:bg-slate-900 border border-fuchsia-500/30 hover:border-fuchsia-400 rounded-xl text-left transition-all">
+                    <span class="block text-xs font-black text-fuchsia-400 uppercase tracking-wider mb-1">별도 신규 기록 등록</span>
+                    <span class="block text-[10px] text-slate-500 font-sans leading-tight">기존 데이터를 유지하고 별도의 새 문서로 추가 등록합니다.</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, updateDoc, query, orderBy, limit, onSnapshot, getDocs, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        if (!window._mg_fbc) {
+            window._mg_fbc = "eyJhcGlLZXkiOiJBSXphU3lCNzBobDd4TUFzeWlYNEJ4UnE3OWx4OW00bnJMckVUR2ciLCJhdXRoRG9tYWluIjoiYmFja3VwLWZjZjE0LmZpcmViYXNlYXBwLmNvbSIsInByb2plY3RJZCI6ImJhY2t1cC1mY2YxNCIsInN0b3JhZ2VCdWNrZXQiOiJiYWNrdXAtZmNmMTQuZmlyZWJhc2VzdG9yYWdlLmFwcCIsIm1lc3NhZ2luZ1NlbmRlcklkIjoiMTkxNjg2MDM3NTUyIiwiYXBwSWQiOiIxOjE5MTY4NjAzNzU1Mjp3ZWI6NmY3ZDIwMWU0NTE4NDI5M2U4OWRmNSJ9";
+        }
+        const minigameConfig = JSON.parse(atob(window._mg_fbc));
+
+        const app = initializeApp(minigameConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const pathArray = ["artifacts", "dino", "public", "data", "leaderboard"];
+
+        let isDbConnected = false;
+        let currentLocalHighScore = localStorage.getItem("dino_high_score") ? parseInt(localStorage.getItem("dino_high_score")) : 0;
+        document.getElementById("best-score").innerText = String(currentLocalHighScore).padStart(5, '0');
+
+        signInAnonymously(auth).then(() => {
+            isDbConnected = true;
+            const authIndicator = document.getElementById("auth-status");
+            authIndicator.className = "text-xs font-bold text-cyan-400 bg-cyan-950/40 px-3 py-1.5 rounded-full border border-cyan-500/30 flex items-center gap-1.5 animate-none";
+            authIndicator.innerHTML = `<span class="w-2 h-2 rounded-full bg-cyan-500"></span> 인증 연결 완료`;
+            listenLeaderboard();
+        }).catch((error) => {
+            console.error("Firebase Security Error Auth: ", error);
+        });
+
+        function listenLeaderboard() {
+            const q = query(collection(db, ...pathArray), orderBy("score", "desc"), limit(10));
+            onSnapshot(q, (snapshot) => {
+                const listEl = document.getElementById("leaderboard-list");
+                listEl.innerHTML = "";
+                
+                if(snapshot.empty) {
+                    listEl.innerHTML = `<div class="text-center py-10 text-xs text-slate-600 font-sans">등록된 랭킹 기록이 없습니다.<br>첫 전설이 되어보세요!</div>`;
+                    return;
+                }
+
+                let rank = 1;
+                snapshot.forEach((documentSnapshot) => {
+                    const data = documentSnapshot.data();
+                    
+                    const rankItem = document.createElement("div");
+                    rankItem.className = `flex justify-between items-center bg-slate-950/60 border ${rank <= 3 ? 'border-cyan-500/20 shadow-[inset_0_0_8px_rgba(6,182,212,0.05)]' : 'border-slate-800/80'} px-4 py-2.5 rounded-xl transition-all`;
+                    
+                    let rankBadgeColor = 'text-slate-400';
+                    if (rank === 1) rankBadgeColor = 'text-amber-400 font-extrabold';
+                    if (rank === 2) rankBadgeColor = 'text-slate-300 font-extrabold';
+                    if (rank === 3) rankBadgeColor = 'text-amber-600 font-extrabold';
+
+                    rankItem.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="font-mono text-sm ${rankBadgeColor} w-4">${rank}</span>
+                            <span class="font-bold text-sm uppercase tracking-wider text-slate-200">${data.nickname}</span>
+                        </div>
+                        <span class="font-mono text-sm font-bold text-cyan-400">${String(data.score).padStart(5, '0')}</span>
+                    `;
+                    listEl.appendChild(rankItem);
+                    rank++;
+                });
+            });
+        }
+
+
+        /* ==========================================================================
+           CORE GAME ENGINE LOGIC (HTML5 CANVAS DINO GAME)
+           ========================================================================= */
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let gameState = "READY"; 
+        let score = 0;
+        let gameSpeed = 6;
+        const gravity = 0.6;
+        const baseSpeed = 6;
+
+        const dino = {
+            x: 50,
+            y: 200,
+            originalHeight: 46,
+            width: 40,
+            height: 46,
+            vy: 0,
+            isJumping: false,
+            isDucking: false,
+            jumpForce: -10, 
+            duckFrameTick: 0,
+            legFrame: 0,
+            frameTick: 0,
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = "#00f0ff";
+                ctx.fillStyle = "#00f0ff";
+
+                if (this.isDucking && !this.isJumping) {
+                    ctx.fillRect(this.x, this.y, this.width + 10, this.height);
+                    ctx.fillStyle = "#020617";
+                    ctx.fillRect(this.x + this.width, this.y + 8, 4, 4);
+                } else {
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    ctx.fillStyle = "#020617";
+                    ctx.fillRect(this.x + 24, this.y + 10, 6, 6);
+                }
+                
+                if (gameState === "PLAYING" && !this.isJumping) {
+                    this.frameTick++;
+                    if (this.frameTick % 8 === 0) this.legFrame = this.legFrame === 0 ? 1 : 0;
+                    ctx.fillStyle = "#020617";
+                    if (this.legFrame === 0) {
+                        ctx.fillRect(this.x + 4, this.y + this.height - 6, 6, 6);
+                    } else {
+                        ctx.fillRect(this.x + this.width - 12, this.y + this.height - 6, 6, 6);
+                    }
+                }
+                ctx.restore();
+            },
+            jump() {
+                if (!this.isJumping && !this.isDucking) {
+                    this.vy = this.jumpForce;
+                    this.isJumping = true;
+                }
+            },
+            duck(state) {
+                if (this.isJumping) return;
+                this.isDucking = state;
+                if (state) {
+                    this.height = this.originalHeight / 1.6;
+                    this.y = 246 - this.height;
+                    this.duckFrameTick = score;
+                } else {
+                    this.height = this.originalHeight;
+                    this.y = 246 - this.height;
+                }
+            },
+            update() {
+                this.y += this.vy;
+                if (this.y + this.height < 246) {
+                    this.vy += gravity;
+                    this.isJumping = true;
+                } else {
+                    this.y = 246 - this.height;
+                    this.vy = 0;
+                    this.isJumping = false;
+                }
+            }
+        };
+
+        let obstacles = [];
+        let nextObstacleTimer = 0;
+        let rapidFireMode = false;
+        let rapidFireCount = 0; 
+
+        class Obstacle {
+            constructor() {
+                const typeRand = Math.random();
+                if (typeRand < 0.4) {
+                    this.type = "cactus_small";
+                    this.width = 18;
+                    this.height = 36;
+                    this.y = 246 - this.height;
+                    this.color = "#ff007f";
+                } else if (typeRand < 0.75) {
+                    this.type = "cactus_large";
+                    this.width = 32;
+                    this.height = 52;
+                    this.y = 246 - this.height;
+                    this.color = "#f43f5e";
+                } else {
+                    this.type = "bird";
+                    this.width = 85; 
+                    this.height = 22;
+                    this.y = Math.random() < 0.5 ? 160 : 205;
+                    this.color = "#d946ef";
+                }
+
+                if (score > 10000 && Math.random() < 0.15) {
+                    this.type = "long_obstacle";
+                    this.width = 120;
+                    
+                    this.height = Math.floor(Math.random() * 25) + 40; 
+                    
+                    if (Math.random() < 0.5) {
+                        this.y = 246 - this.height;
+                    } else {
+                        this.y = 150;
+                    }
+                    
+                    this.color = "#f59e0b";
+                }
+
+                if (rapidFireMode) {
+                    this.type = "rapid_fire_cactus";
+                    this.width = 15;
+                    this.height = 30;
+                    this.y = 246 - this.height;
+                    this.color = "#ff007f";
+                }
+
+                this.x = 820;
+            }
+            draw() {
+                ctx.save();
+                if (this.type === "rapid_fire_cactus") {
+                  ctx.shadowBlur = 20;
+                  ctx.shadowColor = "#ff007f";
+                } else {
+                  ctx.shadowBlur = 12;
+                  ctx.shadowColor = this.color;
+                }
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                ctx.restore();
+            }
+            update() {
+                this.x -= gameSpeed;
+            }
+        }
+
+        let groundX = 0;
+        function drawGround() {
+            ctx.save();
+            ctx.strokeStyle = "rgba(6, 182, 212, 0.4)";
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 6;
+            ctx.shadowColor = "rgba(6, 182, 212, 0.5)";
+            ctx.beginPath();
+            ctx.moveTo(0, 246);
+            ctx.lineTo(800, 246);
+            ctx.stroke();
+
+            ctx.strokeStyle = "rgba(6, 182, 212, 0.15)";
+            ctx.lineWidth = 1;
+            groundX -= gameSpeed;
+            if (groundX <= -40) groundX = 0;
+            for (let i = groundX; i < 800; i += 40) {
+                ctx.beginPath();
+                ctx.moveTo(i, 246);
+                ctx.lineTo(i - 10, 260);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function checkCollision(rect1, rect2) {
+            const marginX = 4;
+            const marginY = 4;
+            return (
+                rect1.x + marginX < rect2.x + rect2.width &&
+                rect1.x + rect1.width - marginX > rect2.x &&
+                rect1.y + marginY < rect2.y + rect2.height &&
+                rect1.y + rect1.height - marginY > rect2.y
+            );
+        }
+
+        function gameLoop() {
+            if (gameState !== "PLAYING") return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawGround();
+            dino.update();
+            dino.draw();
+
+            let calculatedSpeed = baseSpeed + (score / 400);
+            if (score >= 5000) {
+                const speedStep = Math.floor((score - 5000) / 1000);
+                calculatedSpeed += speedStep * 0.8;
+            }
+            gameSpeed = Math.min(calculatedSpeed, 24);
+
+            if (score > 5000 && !rapidFireMode && Math.random() < 0.005) {
+                rapidFireMode = true;
+                rapidFireCount = 3; 
+            }
+
+            if (nextObstacleTimer <= 0) {
+                obstacles.push(new Obstacle());
+                if (rapidFireMode) {
+                    rapidFireCount--;
+                    if (rapidFireCount <= 0) {
+                        rapidFireMode = false;
+                        
+                        let baseMin = Math.max(40, 90 - (gameSpeed * 3));
+                        let baseRange = 60;
+                        if (score >= 10000) {
+                            const scoreFactor = Math.min(25, (score - 10000) / 1000 * 2.5);
+                            baseMin = Math.max(28, baseMin - scoreFactor);
+                            baseRange = Math.max(25, baseRange - scoreFactor);
+                        }
+                        nextObstacleTimer = Math.random() * baseRange + baseMin;
+                    } else {
+                        nextObstacleTimer = 30 + Math.random() * 10;
+                    }
+                } else {
+                    let baseMin = Math.max(40, 90 - (gameSpeed * 3));
+                    let baseRange = 60;
+                    
+                    if (score >= 10000) {
+                        const scoreFactor = Math.min(25, (score - 10000) / 1000 * 2.5);
+                        baseMin = Math.max(28, baseMin - scoreFactor);
+                        baseRange = Math.max(25, baseRange - scoreFactor);
+                    }
+                    nextObstacleTimer = Math.random() * baseRange + baseMin;
+                }
+            } else {
+                nextObstacleTimer--;
+            }
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].update();
+                obstacles[i].draw();
+
+                if (obstacles[i].type === "bird" && obstacles[i].y === 205) {
+                  const timingThreshold = 70;
+                  const timingZone = 45; 
+                  const scoreAtThreshold = score - Math.round((obstacles[i].x - timingThreshold) / gameSpeed);
+
+                  if (score < scoreAtThreshold - timingZone || score > scoreAtThreshold + timingZone) {
+                    if (checkCollision(dino, obstacles[i])) {
+                      endGame();
+                      return;
+                    }
+                  } else {
+                    if (!dino.isDucking && checkCollision(dino, obstacles[i])) {
+                      endGame();
+                      return;
+                    }
+                  }
+                } else if (checkCollision(dino, obstacles[i])) {
+                  endGame();
+                  return;
+                }
+
+                if (obstacles[i].x + obstacles[i].width < 0) {
+                    obstacles.splice(i, 1);
+                }
+            }
+
+            score++;
+            document.getElementById("live-score").innerText = String(score).padStart(5, '0');
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function startGame() {
+            if (gameState === "PLAYING") return;
+            gameState = "PLAYING";
+            score = 0;
+            gameSpeed = baseSpeed;
+            obstacles = [];
+            nextObstacleTimer = 0;
+            dino.y = 200;
+            dino.vy = 0;
+            dino.isDucking = false;
+            rapidFireMode = false;
+            rapidFireCount = 0;
+            
+            document.getElementById("game-overlay").classList.add("hidden");
+            requestAnimationFrame(gameLoop);
+        }
+
+        function endGame() {
+            gameState = "GAMEOVER";
+            document.getElementById("game-overlay").classList.remove("hidden");
+            document.getElementById("overlay-title").innerText = "GAME OVER";
+            document.getElementById("overlay-title").className = "text-3xl font-black text-rose-500 tracking-wider mb-2 text-shadow";
+            document.getElementById("overlay-desc").innerText = `최종 획득 스코어: ${score}점`;
+            document.getElementById("btn-action").innerText = "TRY AGAIN";
+
+            if (score > currentLocalHighScore) {
+                currentLocalHighScore = score;
+                localStorage.setItem("dino_high_score", currentLocalHighScore);
+                document.getElementById("best-score").innerText = String(currentLocalHighScore).padStart(5, '0');
+            }
+
+            if (isDbConnected) {
+                setTimeout(() => {
+                    openScoreSubmitModal();
+                }, 700);
+            }
+        }
+
+        /* ==========================================================================
+           RANKING BUSINESS LOGIC (중복 검사 / 분기 덮어쓰기 선택 모달 매핑)
+           ========================================================================= */
+        let temporaryTargetDocId = null;
+        let temporaryNickname = "";
+
+        function openScoreSubmitModal() {
+            document.getElementById("modal-target-score").innerText = String(score).padStart(5, '0');
+            document.getElementById("modal-score-submit").classList.remove("hidden");
+            document.getElementById("modal-score-submit").classList.add("flex");
+            document.getElementById("input-nickname").focus();
+        }
+
+        function closeScoreSubmitModal() {
+            document.getElementById("modal-score-submit").classList.add("hidden");
+            document.getElementById("modal-score-submit").classList.remove("flex");
+            document.getElementById("input-nickname").value = "";
+        }
+
+        document.getElementById("btn-submit-score").addEventListener("click", async () => {
+            const nicknameInput = document.getElementById("input-nickname").value.trim().toUpperCase();
+            if (!nicknameInput) {
+                alert("닉네임을 입력해야 데이터베이스 동기화가 가능합니다.");
+                return;
+            }
+
+            temporaryNickname = nicknameInput;
+
+            try {
+                const colRef = collection(db, ...pathArray);
+                const q = query(colRef, where("nickname", "==", temporaryNickname));
+                const querySnapshot = await getDocs(q);
+
+                let isDuplicateExist = false;
+                let existingHighestScore = -1;
+                let existingDocId = null;
+
+                querySnapshot.forEach((docSnap) => {
+                    isDuplicateExist = true;
+                    const data = docSnap.data();
+                    if (data.score > existingHighestScore) {
+                        existingHighestScore = data.score;
+                        existingDocId = docSnap.id;
+                    }
+                });
+
+                if (isDuplicateExist && score > existingHighestScore) {
+                    temporaryTargetDocId = existingDocId;
+                    closeScoreSubmitModal();
+                    document.getElementById("modal-duplicate-branch").classList.remove("hidden");
+                    document.getElementById("modal-duplicate-branch").classList.add("flex");
+                } else {
+                    await addDoc(colRef, {
+                        nickname: temporaryNickname,
+                        score: score,
+                        timestamp: Date.now()
+                    });
+                    closeScoreSubmitModal();
+                }
+            } catch (err) {
+                console.error("Score Submission Failed:", err);
+                closeScoreSubmitModal();
+            }
+        });
+
+        document.getElementById("btn-branch-overwrite").addEventListener("click", async () => {
+            if (!temporaryTargetDocId) return;
+            try {
+                const docRef = doc(db, ...pathArray, temporaryTargetDocId);
+                await updateDoc(docRef, {
+                    score: score,
+                    timestamp: Date.now()
+                });
+            } catch (e) { console.error(e); }
+            finally {
+                document.getElementById("modal-duplicate-branch").classList.add("hidden");
+                document.getElementById("modal-duplicate-branch").classList.remove("flex");
+            }
+        });
+
+        document.getElementById("btn-branch-new").addEventListener("click", async () => {
+            try {
+                const colRef = collection(db, ...pathArray);
+                await addDoc(colRef, {
+                    nickname: temporaryNickname,
+                    score: score,
+                    timestamp: Date.now()
+                });
+            } catch (e) { console.error(e); }
+            finally {
+                document.getElementById("modal-duplicate-branch").classList.add("hidden");
+                document.getElementById("modal-duplicate-branch").classList.remove("flex");
+            }
+        });
+
+
+        /* ==========================================================================
+           CONTROLLER EVENT LISTENERS (인풋랙 제거 크로스오버 조작 메커니즘)
+           ========================================================================= */
+        const pressedKeys = {};
+        window.addEventListener("keydown", (e) => {
+            if (["Space", "ArrowUp", "ArrowDown"].includes(e.code)) {
+                e.preventDefault();
+            }
+            pressedKeys[e.code] = true;
+
+            if (gameState === "PLAYING") {
+                if (pressedKeys["Space"] || pressedKeys["ArrowUp"]) dino.jump();
+                if (pressedKeys["ArrowDown"]) dino.duck(true);
+            }
+        });
+
+        window.addEventListener("keyup", (e) => {
+            pressedKeys[e.code] = false;
+            if (gameState === "PLAYING") {
+              if (["Space", "ArrowUp"].includes(e.code) && dino.isJumping) {
+                if (dino.vy < -5) dino.vy = -5;
+              }
+              if (e.code === "ArrowDown") {
+                dino.duck(false);
+              }
+            }
+        });
+
+        document.getElementById("btn-action").addEventListener("click", startGame);
+
+        const jumpTouchBtn = document.getElementById("touch-jump");
+        const duckTouchBtn = document.getElementById("touch-duck");
+
+        jumpTouchBtn.addEventListener("touchstart", (e) => { e.preventDefault(); if (gameState === "PLAYING") dino.jump(); });
+        jumpTouchBtn.addEventListener("touchend", (e) => { e.preventDefault(); if (gameState === "PLAYING" && dino.isJumping) {
+          if (dino.vy < -5) dino.vy = -5;
+        } });
+        
+        duckTouchBtn.addEventListener("touchstart", (e) => { e.preventDefault(); if (gameState === "PLAYING") dino.duck(true); });
+        duckTouchBtn.addEventListener("touchend", (e) => { e.preventDefault(); if (gameState === "PLAYING") dino.duck(false); });
+
+        canvas.addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            if (gameState === "PLAYING") {
+                dino.jump();
+            }
+        });
+        canvas.addEventListener("touchend", (e) => {
+            e.preventDefault();
+            if (gameState === "PLAYING" && dino.isJumping) {
+              if (dino.vy < -5) dino.vy = -5;
+            }
+        });
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "rgba(6, 182, 212, 0.1)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    </script>
+  <script defer src="/minigame/copyright-notice.js"></script>
+</body>
+</html>
