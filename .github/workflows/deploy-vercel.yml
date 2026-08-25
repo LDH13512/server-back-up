@@ -43,17 +43,11 @@ jobs:
         run: |
           test -n "$VERCEL_TOKEN" || { echo "Missing VERCEL_TOKEN"; exit 1; }
 
-      - name: Pull Vercel project settings
-        run: npx --yes vercel@59.5.0 pull --yes --environment=production --scope=school-667c --project=backup --token="$VERCEL_TOKEN"
-
-      - name: Build with Vercel
-        run: npx --yes vercel@59.5.0 build --prod --scope=school-667c --project=backup --token="$VERCEL_TOKEN"
-
       - name: Deploy to production
         id: deploy
         shell: bash
         run: |
-          DEPLOY_URL="$(npx --yes vercel@59.5.0 deploy --prebuilt --prod --yes --scope=school-667c --project=backup --token="$VERCEL_TOKEN")"
+          DEPLOY_URL="$(npx --yes vercel@59.5.0 deploy --prod --yes --scope=school-667c --project=backup --token="$VERCEL_TOKEN")"
           echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
           {
             echo "### Vercel production deployment"
