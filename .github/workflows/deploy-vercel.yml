@@ -15,9 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      VERCEL_TOKEN: ${{ secrets.BACKUP_VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.BACKUP_VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.BACKUP_VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
     steps:
       - name: Check out repository
